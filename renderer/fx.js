@@ -174,6 +174,7 @@ window.FX = (() => {
     root.classList.remove('fx-big');
     st.layer.querySelector('.fx-title').classList.add('hidden');
     st.coins = 0;
+    st.parts = st.parts.filter((p) => p.k !== 'coin');
   }
 
   return { suspense, win, clear, burst: (root, x, y, n, c) => burst(ensure(root), x, y, n, c) };

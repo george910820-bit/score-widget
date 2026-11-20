@@ -136,7 +136,7 @@ window.Slot = (() => {
       const rowH = st.firstElementChild.getBoundingClientRect().height;
       st.style.transform = `translateY(${-(arr.length - 3) * rowH}px)`;
       void st.offsetHeight;
-      const dur = [2.0, 3.3, 6.0][i];
+      const dur = [2.4, 4.0, 9.0][i];
       st.style.transition = i === 2 ? `transform ${dur}s cubic-bezier(.1,.55,.06,1)` : `transform ${dur}s cubic-bezier(.12,.75,.25,1.03)`;
       st.style.transform = 'translateY(0)';
       cur.syms[i] = next;
@@ -227,7 +227,7 @@ window.Slot = (() => {
     root.querySelector('#slotSub').textContent = `⭐ ${before}・🎟 入場券 ${s.zoneTickets} 張（用了 ${bet.cost} 張）`;
     FX.clear(root);
     root.querySelectorAll('.reel').forEach((r) => r.classList.remove('stopped'));
-    const stopWait = FX.suspense(root, 6000);
+    const stopWait = FX.suspense(root, 9000);
     let targets;
     if (win) targets = [bet.sym, bet.sym, bet.sym];
     else do { targets = [rnd(), rnd(), rnd()]; } while (targets[0] === targets[1] && targets[1] === targets[2]);

@@ -284,20 +284,20 @@ window.Lottery = (() => {
       const st = this.st;
       if (!st) return;
       ctx.dark(true);
-      const stop = ctx.wait(7400);
+      const stop = ctx.wait(2400);
       st.mode = 'pop';
       const t0 = performance.now();
-      while (performance.now() - t0 < 4300 && this.st === st) {
-        st.intensity = 0.4 + (performance.now() - t0) / 4300 * 1.1;
-        await sleep(60);
+      while (performance.now() - t0 < 1400 && this.st === st) {
+        st.intensity = 0.8 + (performance.now() - t0) / 1400 * 0.8;
+        await sleep(50);
       }
       if (this.st !== st) { stop(); return; }
       st.mode = 'settle';
       const knob = box.querySelector('.knob');
-      knob.style.transition = 'transform .9s ease-in-out';
+      knob.style.transition = 'transform .5s ease-in-out';
       knob.style.transform = 'rotate(360deg)';
-      Sound.clunk(); setTimeout(() => Sound.clunk(), 300); setTimeout(() => Sound.clunk(), 600);
-      await sleep(950);
+      Sound.clunk(); setTimeout(() => Sound.clunk(), 250);
+      await sleep(500);
       // 從機器裡拿掉一顆同顏色的（看起來真的少了一顆）
       const idx = st.balls.findIndex((b) => b.item.id === item.id);
       if (idx >= 0 && !L().replace) st.balls.splice(idx, 1);
@@ -307,20 +307,16 @@ window.Lottery = (() => {
       await sleep(40);
       cap.className = 'cap-drop rolled';
       Sound.clunk();
-      await sleep(700);
-      // 扭蛋在出口前搖來搖去，再等一下下
-      cap.classList.add('wobble');
-      await sleep(1500);
-      cap.classList.remove('wobble');
+      await sleep(500);
       stop();
       ctx.dark(false);
       cap.className = 'cap-drop center';
-      await sleep(650);
+      await sleep(450);
       cap.className = 'cap-drop center open';
       const rv = box.querySelector('.reveal');
       rv.innerHTML = badge(item);
       rv.className = 'reveal show';
-      await sleep(450);
+      await sleep(250);
     }
   };
 
@@ -367,7 +363,8 @@ window.Lottery = (() => {
             <circle cx="58" cy="100" r="5" fill="#d48b07"/>
           </g>
         </svg>
-        <div class="g-hint">抓住紅色把手，轉一圈！</div>
+        <div class="g-hint">抓住紅色把手，轉一圈以上！</div>
+        <div class="g-hint2 gone">放開手，球就會掉出來！</div>
         <div class="reveal hidden"></div>`;
       const st = { theta: 0, acc: 0, drag: false, last: 0, lastRattle: 0, done: false, box, ctx };
       this.st = st;
@@ -394,14 +391,20 @@ window.Lottery = (() => {
         if (d < -Math.PI) d += Math.PI * 2;
         st.last = a;
         this.turn(st, d);
-        if (st.acc >= Math.PI * 2) { st.drag = false; this.manualDone(st); }
       };
-      box.onpointerup = box.onpointercancel = () => { st.drag = false; };
+      // 至少轉滿一圈；手（或滑鼠）放開的那一刻，球才掉出來
+      box.onpointerup = box.onpointercancel = () => {
+        if (!st.drag) return;
+        st.drag = false;
+        box.querySelector('.g-hint2').classList.add('gone');
+        if (st.acc >= Math.PI * 2 && !st.done) this.manualDone(st);
+      };
     },
     // 把手轉了 d 弧度：桶子跟著轉、發出球碰撞的聲音
     turn(st, d) {
       st.theta += d;
-      st.acc = Math.min(Math.PI * 2, st.acc + Math.abs(d));
+      st.acc += Math.abs(d);
+      if (st.drag && st.acc >= Math.PI * 2) st.box.querySelector('.g-hint2').classList.remove('gone');
       if (Math.abs(st.theta - st.lastRattle) > 0.32) { st.lastRattle = st.theta; Sound.rattle(); }
       this.draw(st);
     },
@@ -415,7 +418,7 @@ window.Lottery = (() => {
       box.querySelector('.grip').setAttribute('cx', gx.toFixed(1)); box.querySelector('.grip').setAttribute('cy', gy.toFixed(1));
       box.querySelector('.grip-hi').setAttribute('cx', (gx - 5).toFixed(1)); box.querySelector('.grip-hi').setAttribute('cy', (gy - 5).toFixed(1));
       // 外圈綠色進度：轉滿一圈就出球
-      const p = st.acc / (Math.PI * 2);
+      const p = Math.min(1, st.acc / (Math.PI * 2));
       const prog = box.querySelector('.prog');
       if (p <= 0.001 || st.done) { prog.setAttribute('d', ''); return; }
       const r = 108, a1 = -Math.PI / 2 + Math.min(p, 0.9999) * Math.PI * 2;
@@ -440,8 +443,8 @@ window.Lottery = (() => {
       if (!st) return;
       box.querySelector('.g-hint').classList.add('gone');
       st.done = false;
-      const steps = 46;
-      for (let i = 0; i < steps && this.st === st; i++) { this.turn(st, Math.PI * 2 / steps); await sleep(30); }
+      const steps = 36;
+      for (let i = 0; i < steps && this.st === st; i++) { this.turn(st, Math.PI * 2 / steps); await sleep(22); }
       if (this.st !== st) return;
       st.done = true; this.draw(st);
       await this.release(st, item);
@@ -457,14 +460,14 @@ window.Lottery = (() => {
       for (let i = 0; i < path.length; i++) {
         ball.setAttribute('cx', path[i][0]); ball.setAttribute('cy', path[i][1]);
         if (i === 4) Sound.clunk();
-        await sleep(i < 4 ? 70 : 110);
+        await sleep(i < 4 ? 55 : 80);
       }
       // 球在盤子裡：燈光變暗、聚光、等一下才揭曉
       const ctx = st.ctx;
       ctx.dark(true);
       ball.classList.add('glowing');
-      const stop = ctx.wait(2600);
-      await sleep(2600);
+      const stop = ctx.wait(1000);
+      await sleep(1000);
       stop();
       ball.classList.remove('glowing');
       ctx.dark(false);
@@ -518,58 +521,115 @@ window.Lottery = (() => {
     },
     async play(box, item, ctx) {
       ctx.dark(true);
-      const stop = ctx.wait(7600);
+      const stop = ctx.wait(3300);
       const seg = this.segs.find((s) => s.id === item.id) || this.segs[0];
       const a = seg.a0 + (seg.a1 - seg.a0) * (0.18 + Math.random() * 0.64);
       const cur = ((this.rot % 360) + 360) % 360;
       const need = ((360 - a - cur) % 360 + 360) % 360;
-      this.rot += 360 * 5 + need;
+      this.rot += 360 * 4 + need;
       const g = box.querySelector('.wheel');
-      g.style.transition = 'transform 7.2s cubic-bezier(.08,.62,.08,1)';
+      g.style.transition = 'transform 3.1s cubic-bezier(.12,.68,.12,1)';
       g.style.transform = `rotate(${this.rot}deg)`;
       let t = 0, gap = 35;
-      while (t < 7000) { setTimeout(() => Sound.tick(), t); t += gap; gap *= 1.075; }
-      await sleep(7500);
+      while (t < 2950) { setTimeout(() => Sound.tick(), t); t += gap; gap *= 1.1; }
+      await sleep(3200);
       stop();
       ctx.dark(false);
     }
   };
 
   // ---------- 骰子 ----------
+  // 立體骰子：六個面放獎項，丟出去會跳、會滾、會彈，最後停在抽到的那一面
+  // 每一面轉到正前方要的角度（rotateX, rotateY）
+  const FACE_ROT = [[0, 0], [0, 180], [0, -90], [0, 90], [-90, 0], [90, 0]];
+  const FACE_CLS = ['f-front', 'f-back', 'f-right', 'f-left', 'f-top', 'f-bottom'];
   const dice = {
+    faces: [],
     mount(box) {
-      const first = displayBalls('dice', 6)[0];
-      box.innerHTML = `<div class="die3"><div class="die-face" style="--c:${first ? first.color : '#999'}"><span>${first ? esc(shortLabel(first)) : '?'}</span></div><div class="die-shadow"></div></div>`;
+      let items = displayBalls('dice', 6);
+      if (!items.length) items = [{ color: '#999', points: 0, type: 'points' }];
+      this.faces = Array.from({ length: 6 }, (_, i) => items[i % items.length]);
+      box.innerHTML = `
+        <div class="d3-floor"></div>
+        <div class="d3-shadow"></div>
+        <div class="d3-pos"><div class="d3-tilt"><div class="d3-cube">
+          ${this.faces.map((it, i) => `<div class="d3-face ${FACE_CLS[i]}" style="--c:${it.color};--t:${inkFor(it.color)}"><span>${esc(shortLabel(it))}</span></div>`).join('')}
+        </div></div></div>`;
+      this.rx = -8; this.ry = 12; this.rz = 0;
+      this.apply(box, 0, 0);
+    },
+    apply(box, x, y) {
+      box.querySelector('.d3-pos').style.transform = `translate(${x.toFixed(2)}cqw, ${y.toFixed(2)}cqw)`;
+      box.querySelector('.d3-cube').style.transform = `rotateX(${this.rx.toFixed(1)}deg) rotateY(${this.ry.toFixed(1)}deg) rotateZ(${this.rz.toFixed(1)}deg)`;
+      const h = Math.max(0, -y);
+      const sh = box.querySelector('.d3-shadow');
+      sh.style.transform = `translateX(calc(-50% + ${x.toFixed(2)}cqw)) scale(${Math.max(0.35, 1 - h / 70).toFixed(2)})`;
+      sh.style.opacity = Math.max(0.15, 0.55 - h / 120).toFixed(2);
     },
     async play(box, item, ctx) {
       ctx.dark(true);
-      const stop = ctx.wait(5200);
-      const face = box.querySelector('.die-face');
-      const pool = displayBalls('dice', 30);
-      face.classList.add('rolling');
-      for (let i = 0; i < 30; i++) {
-        const it = pool[i % pool.length];
-        face.style.setProperty('--c', it.color);
-        face.querySelector('span').textContent = shortLabel(it);
-        face.style.transform = `translate(${(Math.random() - 0.5) * 40}px, ${-Math.random() * 40}px) rotate(${Math.round((Math.random() - 0.5) * 140)}deg)`;
-        if (i % 3 === 0) Sound.tick();
-        await sleep(50 + i * 5);
+      const stop = ctx.wait(2800);
+      // 確定抽到的獎項在某一面上
+      let idx = this.faces.map((f, i) => (f.id === item.id ? i : -1)).filter((i) => i >= 0);
+      if (!idx.length) {
+        const k = Math.floor(Math.random() * 6);
+        this.faces[k] = item;
+        const el = box.querySelectorAll('.d3-face')[k];
+        el.style.setProperty('--c', item.color); el.style.setProperty('--t', inkFor(item.color));
+        el.querySelector('span').textContent = shortLabel(item);
+        idx = [k];
       }
-      // 骰子立起來晃一晃，最後才倒下
-      face.classList.remove('rolling');
-      face.style.setProperty('--c', item.color);
-      face.querySelector('span').textContent = shortLabel(item);
-      face.style.transform = 'translate(0,-10px) rotate(28deg)';
+      const target = idx[Math.floor(Math.random() * idx.length)];
+      // 物理：從左上方丟出來，落地彈跳、一邊翻滾
+      let x = -58, y = -70, vx = 34 + Math.random() * 8, vy = -10;
+      let wx = 600 + Math.random() * 300, wy = 480 + Math.random() * 300, wz = 160 + Math.random() * 160;
+      const G = 260, FLY = 1900;
+      const t0 = performance.now();
+      let last = t0, bounces = 0;
+      Sound.whoosh();
+      await new Promise((resolve) => {
+        const step = (now) => {
+          if (!box.isConnected) { resolve(); return; }
+          const dt = Math.min(0.04, (now - last) / 1000);
+          last = now;
+          vy += G * dt; x += vx * dt; y += vy * dt;
+          if (y > 0) {
+            y = 0;
+            if (Math.abs(vy) > 12) { Sound.clunk(); bounces++; }
+            vy = -Math.abs(vy) * 0.52; vx *= 0.72;
+            wx *= 0.62; wy *= 0.62; wz *= 0.5;
+          }
+          if (x > 30) { x = 30; vx = -Math.abs(vx) * 0.5; }
+          this.rx += wx * dt; this.ry += wy * dt; this.rz += wz * dt;
+          this.apply(box, x, y);
+          if (now - t0 < FLY) requestAnimationFrame(step); else resolve();
+        };
+        requestAnimationFrame(step);
+      });
+      // 最後滾到抽到的那一面朝前
+      const near = (cur, base) => base + Math.round((cur - base) / 360) * 360;
+      const [bx, by] = FACE_ROT[target];
+      const tx = near(this.rx, bx), ty = near(this.ry, by), tz = near(this.rz, 0);
+      const fx = this.rx, fy = this.ry, fz = this.rz, sx = x, sy = y;
+      const t1 = performance.now(), SET = 650;
+      await new Promise((resolve) => {
+        const step = (now) => {
+          if (!box.isConnected) { resolve(); return; }
+          const p = Math.min(1, (now - t1) / SET);
+          const e = 1 - Math.pow(1 - p, 3);
+          this.rx = fx + (tx - fx) * e; this.ry = fy + (ty - fy) * e; this.rz = fz + (tz - fz) * e;
+          const hop = Math.sin(p * Math.PI) * -6;
+          this.apply(box, sx + (0 - sx) * e, sy + (0 - sy) * e + hop);
+          if (p < 1) requestAnimationFrame(step); else resolve();
+        };
+        requestAnimationFrame(step);
+      });
       Sound.clunk();
-      face.classList.add('teeter');
-      await sleep(1500);
-      face.classList.remove('teeter');
       stop();
       ctx.dark(false);
-      face.style.transform = 'translate(0,0) rotate(0deg)';
-      face.classList.add('land');
-      Sound.clunk();
-      await sleep(500);
+      const face = box.querySelectorAll('.d3-face')[target];
+      face.classList.add('win-face');
+      await sleep(250);
     }
   };
 
@@ -875,7 +935,7 @@ window.Lottery = (() => {
       if (!cur || cur.root !== root) return;
       box.classList.remove('hidden');
       cur.busy = false;
-    }, 900);
+    }, 600);
   }
 
   function close() {

@@ -98,12 +98,14 @@ window.Scratch = (() => {
     rt = setTimeout(() => { if (!cur) return; layout(); drawFoil(true); }, 150);
   }
 
-  // 銀色刮層
+  // 銀色刮層（視窗大小改變時，已經刮掉的地方會保留）
   function drawFoil(keep) {
     const cv = cur.root.querySelector('#scFoil');
     const wrap = cur.root.querySelector('#scWrap');
     const dpr = window.devicePixelRatio || 1;
     const w = wrap.clientWidth, h = wrap.clientHeight;
+    let old = null;
+    if (keep && cv.width) { old = document.createElement('canvas'); old.width = cv.width; old.height = cv.height; old.getContext('2d').drawImage(cv, 0, 0); }
     cv.width = w * dpr; cv.height = h * dpr;
     const g = cv.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -115,15 +117,20 @@ window.Scratch = (() => {
     for (let x = -h; x < w; x += 14) { g.beginPath(); g.moveTo(x, h); g.lineTo(x + h, 0); g.stroke(); }
     const cell = cellRects();
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    cell.forEach((r, i) => {
-      if (cur.revealed[i]) { g.clearRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); return; }
+    cell.forEach((r) => {
       g.fillStyle = 'rgba(120,128,138,.35)';
       g.beginPath(); g.arc(r.x + r.w / 2, r.y + r.h / 2, r.w * 0.3, 0, Math.PI * 2); g.fill();
       g.fillStyle = 'rgba(255,255,255,.85)';
       g.font = `bold ${Math.round(r.w * 0.3)}px "Microsoft JhengHei UI", sans-serif`;
       g.fillText('刮', r.x + r.w / 2, r.y + r.h / 2 + 1);
     });
-    if (keep) cur.root.querySelectorAll('.sc-cell').forEach((c, i) => c.classList.toggle('shown', cur.revealed[i]));
+    if (old) {
+      // 把舊的刮痕貼回來：只保留舊畫布「已經刮掉」的地方
+      g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+      g.globalCompositeOperation = 'destination-in';
+      g.drawImage(old, 0, 0, cv.width, cv.height);
+      g.restore();
+    }
   }
 
   function cellRects() {
@@ -181,17 +188,14 @@ window.Scratch = (() => {
         const alpha = img.data[(y * W0 + x) * 4 + 3];
         n++; if (alpha < 100) clear++;
       }
-      if (clear / n >= 0.45) revealCell(i);
+      if (clear / n >= 0.6) revealCell(i);
     });
     if (cur.revealed.every(Boolean)) finish();
   }
 
+  // 一格刮得差不多了：記錄起來（刮層不會自動消失，刮到哪裡就看到哪裡）
   function revealCell(i) {
     cur.revealed[i] = true;
-    const r = cellRects()[i];
-    cur.g.clearRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
-    const el = cur.root.querySelectorAll('.sc-cell')[i];
-    el.classList.add('shown');
     const sym = cur.card.cells[i];
     const seen = cur.card.cells.filter((x, k) => x === sym && cur.revealed[k]).length;
     Sound.reveal(seen >= 2 ? seen : 0);
@@ -200,9 +204,23 @@ window.Scratch = (() => {
   async function revealAll() {
     if (!cur || cur.done || cur.busy) return;
     cur.busy = true;
+    const rects = cellRects();
     for (let i = 0; i < 9; i++) {
       if (!cur) return;
-      if (!cur.revealed[i]) { revealCell(i); await sleep(260); }
+      if (cur.revealed[i]) continue;
+      // 像用硬幣刮一樣，來回刮幾下
+      const r = rects[i], g = cur.g;
+      g.globalCompositeOperation = 'destination-out';
+      g.lineCap = 'round'; g.lineWidth = r.h * 0.26;
+      for (let k = 0; k < 5; k++) {
+        const y = r.y + r.h * (0.14 + k * 0.18);
+        g.beginPath(); g.moveTo(r.x + r.w * 0.08, y); g.lineTo(r.x + r.w * 0.92, y + r.h * 0.06); g.stroke();
+        Sound.scratch();
+        await sleep(35);
+      }
+      g.globalCompositeOperation = 'source-over';
+      revealCell(i);
+      await sleep(90);
     }
     cur.busy = false;
     finish();
@@ -216,14 +234,8 @@ window.Scratch = (() => {
     root.classList.add('busy');
     root.querySelector('.lotto-actions').classList.add('hidden');
     root.querySelector('#scInfo').textContent = '對獎中…';
-    root.querySelector('#scCard').classList.add('checking');
-    root.classList.add('dark');
-    const stop = FX.suspense(root, 2800);
-    await sleep(2800);
-    stop();
+    await sleep(500);
     if (!cur || cur.root !== root) return;
-    root.classList.remove('dark');
-    root.querySelector('#scCard').classList.remove('checking');
     const win = cur.card.win;
     if (win) {
       cur.root.querySelectorAll('.sc-cell').forEach((c, i) => c.classList.toggle('match', cur.card.cells[i] === win.sym));
