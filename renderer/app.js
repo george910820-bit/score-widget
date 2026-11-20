@@ -79,7 +79,8 @@
       sound: { on: true, volume: 70, plus: null, minus: null, fileVersion: 0 },
       lottery: { skin: 'gacha', baseOne: true, replace: false, pityOn: true, pityN: 4, ticketMode: 'free', ticketEvery: 5, machinePool: {} },
       slot: { on: true, bets: defaultBets() },
-      zone: { on: true, price: 10, scratch: defaultScratch() }
+      zone: { on: true, price: 10, scratch: defaultScratch() },
+      monopoly: { perRoll: 5, startCoins: 100, salary: 50, autoOpen: false }
     };
   }
   function defaultData() {
@@ -107,7 +108,7 @@
     const out = { ...base, ...d };
     const ds = defaultSettings();
     const s = d.settings || {};
-    out.settings = { ...ds, ...s, sound: { ...ds.sound, ...(s.sound || {}) }, lottery: { ...ds.lottery, ...(s.lottery || {}) }, slot: { ...ds.slot, ...(s.slot || {}) }, zone: { ...ds.zone, ...(s.zone || {}) } };
+    out.settings = { ...ds, ...s, sound: { ...ds.sound, ...(s.sound || {}) }, lottery: { ...ds.lottery, ...(s.lottery || {}) }, slot: { ...ds.slot, ...(s.slot || {}) }, zone: { ...ds.zone, ...(s.zone || {}) }, monopoly: { ...ds.monopoly, ...(s.monopoly || {}) } };
     // 第四版：拉霸改用入場券押注，舊的押注（用點數）換成新的預設
     if (!s.zone) out.settings.slot.bets = defaultBets();
     if (!Array.isArray(out.settings.zone.scratch) || !out.settings.zone.scratch.length) out.settings.zone.scratch = defaultScratch();
@@ -221,6 +222,8 @@
       while (s.ticketProgress >= every) { s.ticketProgress -= every; s.tickets++; gotTicket++; }
       if (gotTicket) data.history.push({ t: new Date().toISOString(), type: 'ticket', classId: c.id, studentId: s.id, name: s.name, delta: 0, score: next, item: `獲得抽獎券 ${gotTicket} 張` });
     }
+    // 大富翁：好行為每累積幾分，得到 1 次擲骰機會
+    const gotRoll = Monopoly.onPoints(s, delta);
     save();
     renderScores();
     flash(studentId, sign, delta);
@@ -228,6 +231,9 @@
     if (gotTicket) {
       setTimeout(() => Sound.ticket(), 250);
       toast(`${s.name} 拿到 ${gotTicket} 張抽獎券 🎟`, true);
+    } else if (gotRoll) {
+      setTimeout(() => Sound.ticket(), 250);
+      toast(`${s.name} 得到 1 次大富翁擲骰機會 🎲`, true);
     } else {
       toast(`${s.name} ${delta > 0 ? '+' : ''}${delta}　⭐ ${next}`, true);
     }
@@ -422,6 +428,7 @@
     document.body.classList.toggle('is-display', display);
     if (display) requestAnimationFrame(renderGrid);
     else renderList();
+    if (display && data.settings.monopoly.autoOpen && !Monopoly.isOpen()) setTimeout(() => Monopoly.open(), 250);
   }
   let gridTimer = null;
   window.addEventListener('resize', () => {
@@ -504,6 +511,7 @@
     else if (h.type === 'slot') what = h.keep ? '拉霸：選擇不拉' : `拉霸${esc(h.item)}（🎟${h.tickets || h.cost}）：${h.win ? `中了 +${h.prize}` : '沒中'}`;
     else if (h.type === 'scratch') what = `刮刮樂：${h.win ? `${esc(h.item)} 中了 +${h.prize}` : '沒中'}`;
     else if (h.type === 'zone-ticket') what = `換入場券 ${h.delta}`;
+    else if (h.type === 'mp') what = `🏙️ ${esc(h.item)}`;
     else if (h.type === 'ticket') what = esc(h.item || '獲得抽獎券');
     else if (h.studentId === null) what = esc(h.name);
     else what = `${h.delta > 0 ? '+' : ''}${h.delta}`;
@@ -597,6 +605,7 @@
     if (Lottery.isOpen()) Lottery.close();
     if (Slot.isOpen()) Slot.close();
     if (Scratch.isOpen()) Scratch.close();
+    if (Monopoly.isOpen()) Monopoly.close();
     Zone.close(true);
     closeSheet();
     $('settings').classList.remove('hidden');
@@ -678,6 +687,10 @@
     const z = data.settings.zone;
     const pr = Number(z.price) || 10;
     $('inZoneOn').checked = !!z.on;
+    $('inMpPer').value = data.settings.monopoly.perRoll;
+    $('inMpStart').value = data.settings.monopoly.startCoins;
+    $('inMpSalary').value = data.settings.monopoly.salary;
+    $('inMpAuto').checked = !!data.settings.monopoly.autoOpen;
     $('inZonePrice').value = pr;
     $('outPrice').textContent = pr;
     const sc = z.scratch;
@@ -1025,6 +1038,19 @@
     toast(data.settings.zone.on ? '遊戲區開放了 🎪' : '遊戲區休息中 😴', false);
   };
   $('btnZone').onclick = toggleZone;
+  $('btnMono').innerHTML = '<span class="em">🏙️</span><span>大富翁</span>';
+  $('dMono').innerHTML = '<span class="em">🏙️</span>';
+  $('btnMono').onclick = () => Monopoly.open();
+  $('dMono').onclick = () => Monopoly.open();
+  const MP = () => data.settings.monopoly;
+  $('inMpPer').onchange = (e) => { MP().perRoll = Math.max(1, Math.min(50, Math.round(Number(e.target.value) || 5))); save(); renderSlotSettings(); };
+  $('inMpStart').onchange = (e) => { MP().startCoins = Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 100))); save(); };
+  $('inMpSalary').onchange = (e) => { MP().salary = Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 50))); save(); };
+  $('inMpAuto').onchange = (e) => { MP().autoOpen = e.target.checked; save(); };
+  $('btnMpReset').onclick = async () => {
+    if (!(await confirmBox('確定要開始新的一局大富翁嗎？\n金幣、位置、地產、欠款會重新開始（擲骰機會保留；按錯可以復原）', '新的一局'))) return;
+    Monopoly.reset(); toast('大富翁新的一局開始了', true);
+  };
   $('dZone').onclick = toggleZone;
   const toggleSound = () => { data.settings.sound.on = !data.settings.sound.on; save(); applySound(); toast(data.settings.sound.on ? '音效開' : '已靜音', false); };
   $('btnPin').onclick = togglePin;
@@ -1051,6 +1077,7 @@
     if (Slot.isOpen()) { Slot.onKey(e); return; }
     if (Scratch.isOpen()) { Scratch.onKey(e); return; }
     if (Zone.isOpen()) { Zone.onKey(e); return; }
+    if (Monopoly.isOpen()) { Monopoly.onKey(e); return; }
     const typing = e.target.closest('input, textarea, select');
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undo(); }
     if (e.key === 'Escape') {

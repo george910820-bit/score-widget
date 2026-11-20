@@ -650,3 +650,92 @@ body.is-display .zg-ic { font-size: 90px; }
 .g-hint2 { position: absolute; left: 50%; top: 2%; transform: translateX(-50%); background: #2e9d5b; color: #fff; font-weight: bold;
   padding: 1cqw 3.5cqw; border-radius: 999px; font-size: 5.4cqw; white-space: nowrap; pointer-events: none; animation: hintBob .6s ease-in-out infinite; }
 .g-hint2.gone { display: none; }
+
+/* ================= 第六版：虎尾大富翁（雛形） ================= */
+.mp-overlay { position: fixed; inset: 0; z-index: 50; background: #1f5d4c; color: #fff; display: flex; flex-direction: column; }
+.mp-title { font-size: 1.15em; font-weight: bold; color: #ffe082; }
+.mp-sub { font-size: .85em; opacity: .85; margin-left: 10px; }
+.mp-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px; overflow: auto; }
+.mp-body.wide { flex-direction: row; justify-content: center; align-items: center; }
+.mp-board-wrap { flex: none; }
+.mp-board { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(7, 1fr); gap: 2px;
+  background: #144437; border-radius: 12px; padding: 0; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.mp-tile { position: relative; background: #fffaf0; color: var(--ink); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; padding: 2px; container-type: inline-size; }
+.mp-tile .band { position: absolute; left: 0; right: 0; top: 0; height: 14%; }
+.mp-tile .ti { font-size: calc(var(--c) * .34); line-height: 1.1; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; margin-top: 6%; }
+.mp-tile .tn { font-size: max(9px, calc(var(--c) * .14)); font-weight: bold; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mp-tile .tp { font-size: max(8px, calc(var(--c) * .12)); color: #8a6d3b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mp-tile .town { position: absolute; right: 3px; top: 16%; }
+.mp-tile.corner { background: #fff1c9; }
+.mp-tile.t-chance { background: #fff4d6; } .mp-tile.t-fate { background: #f3e8ff; }
+.mp-tile.t-court { background: #e7efff; } .mp-tile.t-eco { background: #e5f4e4; } .mp-tile.t-friend { background: #fde7f0; }
+.mp-tile.t-bank, .mp-tile.t-insure, .mp-tile.t-shop { background: #fff1d6; }
+.mp-center { grid-row: 2 / 7; grid-column: 2 / 7; position: relative; background: radial-gradient(circle at 50% 40%, #2b7a63, #185a48); border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--c) * .12); padding: calc(var(--c) * .15); }
+.mc-who { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.12); padding: 6px 14px 6px 6px; border-radius: 999px; }
+.mc-who b { font-size: max(14px, calc(var(--c) * .26)); }
+.mc-sub { font-size: max(11px, calc(var(--c) * .16)); opacity: .9; }
+.mc-dice { position: relative; width: calc(var(--c) * 1.25); height: calc(var(--c) * 1.25); perspective: calc(var(--c) * 6); }
+.mc-dice.jump .mpd-scene { animation: dieJump 1.25s cubic-bezier(.3,.6,.4,1); }
+@keyframes dieJump { 0% { transform: translateY(0); } 25% { transform: translateY(calc(var(--c) * -.9)); } 50% { transform: translateY(0); } 65% { transform: translateY(calc(var(--c) * -.3)); } 80% { transform: translateY(0); } 90% { transform: translateY(calc(var(--c) * -.08)); } 100% { transform: translateY(0); } }
+.mpd-scene { width: 100%; height: 100%; transform-style: preserve-3d; }
+.mpd-cube { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
+.mpd-cube::before { content: ''; position: absolute; inset: 8%; background: #ddd; transform: translateZ(0); }
+.mpd-face { position: absolute; inset: 0; background: #fffdf6; border-radius: 16%; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 14%;
+  box-shadow: inset 0 0 0 calc(var(--c) * .03) #e0d6c0, inset 0 calc(var(--c) * -.06) calc(var(--c) * .1) rgba(0,0,0,.12); }
+.mpd-face i { width: 62%; height: 62%; border-radius: 50%; place-self: center; visibility: hidden; background: #3b2f22; }
+.mpd-face i.on { visibility: visible; }
+.mpd-face.mf0 i.on { background: #d62e3a; width: 80%; height: 80%; }
+.mf0 { transform: translateZ(calc(var(--c) * .625)); }
+.mf1 { transform: rotateY(180deg) translateZ(calc(var(--c) * .625)); }
+.mf2 { transform: rotateY(90deg) translateZ(calc(var(--c) * .625)); }
+.mf3 { transform: rotateY(-90deg) translateZ(calc(var(--c) * .625)); }
+.mf4 { transform: rotateX(90deg) translateZ(calc(var(--c) * .625)); }
+.mf5 { transform: rotateX(-90deg) translateZ(calc(var(--c) * .625)); }
+.mpd-shadow { position: absolute; left: 15%; right: 15%; bottom: -14%; height: 14%; border-radius: 50%; background: rgba(0,0,0,.3); filter: blur(4px); }
+.mp-center .go { min-width: 0; padding: 0 calc(var(--c) * .4); height: max(40px, calc(var(--c) * .55)); font-size: max(16px, calc(var(--c) * .24)); }
+.mc-hint { font-size: max(12px, calc(var(--c) * .16)); color: #ffe9a8; min-height: 1.2em; }
+.mc-empty { opacity: .8; }
+.mp-overlay.busy .mp-center .go { opacity: .4; pointer-events: none; }
+/* 卡片 */
+.mc-card { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, calc(var(--c) * 4.6)); background: #fff; color: var(--ink);
+  border-radius: 16px; padding: calc(var(--c) * .16) calc(var(--c) * .2); box-shadow: 0 12px 40px rgba(0,0,0,.4); z-index: 5;
+  font-size: max(14px, calc(var(--c) * .19)); }
+.mc-card.pop { animation: cardIn .35s cubic-bezier(.3,1.5,.5,1); }
+@keyframes cardIn { 0% { transform: translate(-50%, -50%) scale(.5) rotateY(90deg); } 100% { transform: translate(-50%, -50%) scale(1) rotateY(0); } }
+.mcc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 1.15em; }
+.mcc-ic { font-size: 1.4em; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.mcc-topic { margin-left: auto; font-size: .7em; color: #fff; background: var(--tc); padding: 2px 10px; border-radius: 999px; }
+.mcc-text { line-height: 1.6; margin-bottom: 10px; }
+.mcc-cost { margin-top: 8px; font-size: .85em; background: #fff6e3; border-radius: 8px; padding: 6px 10px; color: #6b4f00; line-height: 1.6; }
+.mcc-why { margin-top: 8px; font-size: .88em; color: #2e6b4f; }
+.mcc-amt { font-size: 1.6em; font-weight: bold; margin-top: 4px; }
+.mcc-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.mcc-btns button { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 8px 14px; font-size: 1em; cursor: pointer; flex: 1 1 auto; }
+.mcc-btns button.primary { background: var(--accent) !important; color: #fff; border-color: var(--accent) !important; }
+.mcc-btns button:hover { filter: brightness(.96); }
+/* 棋子 */
+.mp-tokens { position: absolute; inset: 0; pointer-events: none; }
+.mp-token { position: absolute; left: 0; top: 0; transition: transform .26s ease-in-out; filter: drop-shadow(0 3px 3px rgba(0,0,0,.45)); }
+.mp-token .avatar { box-shadow: 0 0 0 2px #fff; }
+.mp-token.sel { z-index: 2; }
+.mp-token.sel .avatar { box-shadow: 0 0 0 3px #ffd54f, 0 0 12px 3px rgba(255,213,79,.8); }
+.mp-token.hop .avatar { animation: hop .28s ease-out; }
+@keyframes hop { 50% { transform: translateY(-40%) scale(1.1); } }
+/* 玩家列表 */
+.mp-side { flex: none; width: min(100%, 300px); background: rgba(0,0,0,.18); border-radius: 14px; padding: 8px; max-height: 100%; overflow-y: auto; }
+.mp-body:not(.wide) .mp-side { width: min(100%, 560px); max-height: 30vh; }
+.ms-head { font-size: .8em; opacity: .8; margin: 2px 4px 6px; }
+.ms-row { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 10px; cursor: pointer; }
+.ms-row:hover { background: rgba(255,255,255,.08); }
+.ms-row.sel { background: rgba(255,213,79,.22); box-shadow: inset 0 0 0 2px #ffd54f; }
+.ms-info { flex: 1; min-width: 0; }
+.ms-info b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-stats { font-size: .8em; opacity: .92; }
+.ms-stats .debt { color: #ffab91; }
+.ms-rolls { font-weight: bold; font-size: 1.05em; }
+.ms-give { border: 0; width: 28px; height: 28px; border-radius: 8px; background: rgba(255,255,255,.18); color: #fff; font-size: 18px; cursor: pointer; }
+.ms-give:hover { background: rgba(255,255,255,.3); }
+body.is-display .mp-side { width: 340px; font-size: 1.1em; }
+body.is-display .mp-title { font-size: 1.6em; }
