@@ -37,6 +37,12 @@
         { id: uid(), type: 'points', points: 2, count: 3, color: '#3b82f6' },
         { id: uid(), type: 'points', points: 5, count: 1, color: '#f59e0b' }
       ] },
+      { id: uid(), name: '日本抽獎', items: [
+        { id: uid(), type: 'points', points: 0, count: 8, color: '#f4f1ea' },
+        { id: uid(), type: 'points', points: 1, count: 6, color: '#ef4444' },
+        { id: uid(), type: 'points', points: 2, count: 3, color: '#3b82f6' },
+        { id: uid(), type: 'points', points: 5, count: 1, color: '#d4a017' }
+      ] },
       { id: uid(), name: '穩定期', items: [
         { id: uid(), type: 'points', points: 0, count: 5, color: '#9aa5b1' },
         { id: uid(), type: 'points', points: 1, count: 3, color: '#2e9d5b' },
@@ -52,22 +58,32 @@
       { id: uid(), icon: '🎮', name: '自由時間 5 分鐘', cost: 30 }
     ];
   }
+  function defaultBets() {
+    return [
+      { id: uid(), sym: '🍧', name: '押小', cost: 1, chance: 50, prize: 3 },
+      { id: uid(), sym: '🧋', name: '押中', cost: 2, chance: 30, prize: 8 },
+      { id: uid(), sym: '🥟', name: '押大', cost: 3, chance: 10, prize: 20 }
+    ];
+  }
   function defaultSettings() {
     return {
       step: 1, sort: 'list', noNegative: true, opacity: 100, zoom: 100,
       sound: { on: true, volume: 70, plus: null, minus: null, fileVersion: 0 },
-      lottery: { skin: 'gacha', baseOne: true, replace: false, pityOn: true, pityN: 4, ticketMode: 'free', ticketEvery: 5 }
+      lottery: { skin: 'gacha', baseOne: true, replace: false, pityOn: true, pityN: 4, ticketMode: 'free', ticketEvery: 5, machinePool: {} },
+      slot: { on: true, bets: defaultBets() }
     };
   }
   function defaultData() {
     const id = uid();
     const pools = defaultPools();
+    const settings = defaultSettings();
+    settings.lottery.machinePool = { gacha: pools[0].id, garapon: pools[1].id, wheel: pools[0].id, dice: pools[2].id };
     return {
-      version: 2,
+      version: 3,
       currentClassId: id,
       classes: [{ id, name: '我的班級', students: [] }],
       history: [],
-      settings: defaultSettings(),
+      settings,
       pools,
       activePoolId: pools[0].id,
       lotteryRemain: null,
@@ -82,7 +98,9 @@
     const out = { ...base, ...d };
     const ds = defaultSettings();
     const s = d.settings || {};
-    out.settings = { ...ds, ...s, sound: { ...ds.sound, ...(s.sound || {}) }, lottery: { ...ds.lottery, ...(s.lottery || {}) } };
+    out.settings = { ...ds, ...s, sound: { ...ds.sound, ...(s.sound || {}) }, lottery: { ...ds.lottery, ...(s.lottery || {}) }, slot: { ...ds.slot, ...(s.slot || {}) } };
+    if (!Array.isArray(out.settings.slot.bets)) out.settings.slot.bets = defaultBets();
+    out.settings.slot.bets.forEach((b) => { if (!b.id) b.id = uid(); });
     if (!Array.isArray(out.classes) || !out.classes.length) out.classes = base.classes;
     out.classes.forEach((c) => {
       if (!c.id) c.id = uid();
@@ -110,9 +128,21 @@
       });
     });
     if (!out.pools.some((p) => p.id === out.activePoolId)) out.activePoolId = out.pools[0].id;
+    // 第三版：每台機器各自的獎池；彩球機換成日本抽獎機
+    const lt = out.settings.lottery;
+    if (lt.skin === 'blower') lt.skin = 'garapon';
+    if (!lt.machinePool || typeof lt.machinePool !== 'object') lt.machinePool = {};
+    const has = (id) => out.pools.some((p) => p.id === id);
+    if (!has(lt.machinePool.garapon)) {
+      let jp = out.pools.find((p) => p.name === '日本抽獎');
+      if (!jp) { jp = defaultPools()[1]; out.pools.push(jp); }
+      lt.machinePool.garapon = jp.id;
+    }
+    ['gacha', 'wheel', 'dice'].forEach((m) => { if (!has(lt.machinePool[m])) lt.machinePool[m] = out.activePoolId; });
+    if (out.lotteryRemain && out.lotteryRemain.counts) out.lotteryRemain = {};
     if (!Array.isArray(out.rewards)) out.rewards = base.rewards;
     if (!out.classes.some((c) => c.id === out.currentClassId)) out.currentClassId = out.classes[0].id;
-    out.version = 2;
+    out.version = 3;
     return out;
   }
 
@@ -255,7 +285,7 @@
     const t = ticketMode();
     const n = s.tickets || 0;
     const off = t && n === 0;
-    return `<button class="${cssClass}${off ? ' off' : ''}" data-act="lotto" title="${t ? `抽獎（抽獎券 ${n} 張）` : '抽獎'}">🎰${t ? `<i class="badge">${n}</i>` : ''}</button>`;
+    return `<button class="${cssClass}${off ? ' off' : ''}" data-act="lotto" title="${t ? `抽獎（抽獎券 ${n} 張）` : '抽獎'}">🎲${t ? `<i class="badge">${n}</i>` : ''}</button>`;
   }
 
   function renderList() {
@@ -325,6 +355,7 @@
           <button class="pm minus" data-act="minus" title="扣分">−</button>
           <button class="pm plus" data-act="plus" title="加分">＋</button>
           ${lottoBtn(s, 'pm lotto')}
+          ${data.settings.slot.on ? '<button class="pm slot" data-act="slot" title="吃角子老虎機">🎰</button>' : ''}
           <button class="pm gift${rp && rp.can ? ' can' : ''}" data-act="redeem" title="兌換獎勵">🎁</button>
         </div>
       </div>`;
@@ -456,6 +487,7 @@
     let what;
     if (h.type === 'lottery') what = `抽獎「${esc(h.item)}」${h.delta >= 0 ? '+' : ''}${h.delta}${h.pity ? '（保底）' : ''}`;
     else if (h.type === 'redeem') what = `兌換「${esc(h.item)}」${h.delta}`;
+    else if (h.type === 'slot') what = h.keep ? '拉霸：選擇不拉' : `拉霸${esc(h.item)}：${h.win ? '中了' : '沒中'} ${h.delta >= 0 ? '+' : ''}${h.delta}`;
     else if (h.type === 'ticket') what = esc(h.item || '獲得抽獎券');
     else if (h.studentId === null) what = esc(h.name);
     else what = `${h.delta > 0 ? '+' : ''}${h.delta}`;
@@ -478,7 +510,8 @@
         </div>
       </div>
       <div class="ss-actions">
-        <button id="ssLotto" class="primary">🎰 抽獎</button>
+        <button id="ssLotto" class="primary">🎲 抽獎</button>
+        ${data.settings.slot.on ? '<button id="ssSlot">🎰 吃角子老虎機</button>' : ''}
         <button id="ssRedeem">🎁 兌換獎勵</button>
         ${t ? '<button id="ssTicket">🎟 送 1 張抽獎券</button>' : ''}
       </div>
@@ -488,6 +521,8 @@
       root.querySelector('#ssAvatar').onclick = () => Avatar.openPicker(s, () => { renderAll(); openStudentSheet(sid); });
       root.querySelector('#ssLotto').onclick = () => { closeSheet(); openLotto(sid); };
       root.querySelector('#ssRedeem').onclick = () => openRedeem(sid);
+      const sl = root.querySelector('#ssSlot');
+      if (sl) sl.onclick = () => { closeSheet(); Slot.open(s); };
       const tk = root.querySelector('#ssTicket');
       if (tk) tk.onclick = () => {
         snapshot(`${s.name} 抽獎券`);
@@ -545,6 +580,7 @@
   let curTab = 'roster';
   function openSettings(tab, focusPaste) {
     if (Lottery.isOpen()) Lottery.close();
+    if (Slot.isOpen()) Slot.close();
     closeSheet();
     $('settings').classList.remove('hidden');
     showTab(tab || curTab);
@@ -586,6 +622,8 @@
     renderLotterySettings();
     // 獎勵
     renderRewardSettings();
+    // 拉霸
+    renderSlotSettings();
     // 音效
     $('inSoundOn').checked = !!st.sound.on;
     $('inVolume').value = st.sound.volume;
@@ -601,6 +639,7 @@
     if (curTab === 'stats') renderStats();
   }
 
+  let editMachine = 'gacha';
   function renderLotterySettings() {
     const l = data.settings.lottery;
     document.querySelectorAll('input[name=ticketMode]').forEach((r) => { r.checked = r.value === l.ticketMode; });
@@ -611,40 +650,33 @@
     document.querySelectorAll('input[name=replace]').forEach((r) => { r.checked = (r.value === 'yes') === !!l.replace; });
     $('inPityOn').checked = !!l.pityOn;
     $('inPityN').value = l.pityN;
-    $('inSkin').innerHTML = Lottery.SKINS.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
-    $('inSkin').value = l.skin;
-    // 獎池
-    const pool = Lottery.activePool();
-    $('inPool').innerHTML = data.pools.map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
-    $('inPool').value = pool.id;
-    $('inPoolName').value = pool.name;
-    const total = pool.items.reduce((a, it) => a + (Number(it.count) || 0), 0);
-    $('itemList').innerHTML = pool.items.map((it) => `
-      <div class="item-row" data-iid="${it.id}">
-        <button class="color-dot" data-ed="color" style="background:${it.color}" title="點一下換顏色"></button>
-        <select data-ed="type"><option value="points"${it.type !== 'prize' ? ' selected' : ''}>加分</option><option value="prize"${it.type === 'prize' ? ' selected' : ''}>獎品</option></select>
-        ${it.type === 'prize'
-          ? `<input data-ed="name" type="text" value="${esc(it.name || '')}" maxlength="8" placeholder="獎品名稱">`
-          : `<input data-ed="points" type="number" step="1" min="0" max="99" value="${it.points}" title="加幾分（0＝沒加碼）">`}
-        <input data-ed="count" type="number" step="1" min="0" max="99" value="${it.count}" title="放幾顆球">
-        <span class="pct">${total ? Math.round(it.count / total * 100) : 0}%</span>
-        <button data-ed="del" class="del" title="刪除">✕</button>
-      </div>`).join('') || '<div class="edit-empty">還沒有球，按下面新增。</div>';
-    const hit = pool.items.filter(Lottery.isHit).reduce((a, it) => a + (Number(it.count) || 0), 0);
-    const avg = hit ? (total / hit) : 0;
-    $('poolSummary').innerHTML = total
-      ? `共 ${total} 顆球・有加碼的機率 <b>${Math.round(hit / total * 100)}%</b>${hit ? `，平均 <b>${avg.toFixed(1).replace('.0', '')}</b> 次加碼一次` : ''}`
-      : '獎池是空的';
-    // 這一輪剩下
-    if (l.replace) {
-      $('remainBox').innerHTML = '';
-    } else {
-      const ws = Lottery.weights(pool);
-      const left = ws.reduce((a, b) => a + b.w, 0);
-      $('remainBox').innerHTML = `<div class="remain-balls">${ws.map((x) => `<span class="rb" style="--c:${x.item.color}">${esc(Lottery.label(x.item))} × ${x.w}</span>`).join('')}</div>
-        <div class="btn-row"><span class="muted" style="margin:0;align-self:center">這一輪還剩 ${left} 顆</span><button id="btnRefill">重新裝滿</button></div>`;
-      $('btnRefill').onclick = () => { snapshot('重新裝滿'); Lottery.refill(pool); save(); renderLotterySettings(); toast('已重新裝滿', true); };
-    }
+    const opts = Lottery.MACHINES.map((m) => `<option value="${m.id}">${m.name}</option>`).join('');
+    $('inSkin').innerHTML = opts; $('inSkin').value = l.skin;
+    $('inMachine').innerHTML = opts; $('inMachine').value = editMachine;
+    Lottery.renderEditor($('poolEditor'), editMachine);
+  }
+
+  function renderSlotSettings() {
+    const sl = data.settings.slot;
+    $('inSlotOn').checked = !!sl.on;
+    $('slotBetList').innerHTML = sl.bets.map((b) => {
+      const ev = b.chance / 100 * b.prize - b.cost;
+      const evTxt = Math.abs(ev) < 0.05 ? '不賺不賠' : (ev > 0 ? `平均每拉一次 +${ev.toFixed(1)} 點` : `平均每拉一次 ${ev.toFixed(1)} 點`);
+      return `
+      <div class="bet-row" data-bid="${b.id}">
+        <div class="br1">
+          <select data-sb="sym">${Slot.SYMS.map((x) => `<option value="${x}"${x === b.sym ? ' selected' : ''}>${x} ${Slot.SYM_NAME[x]}</option>`).join('')}</select>
+          <input data-sb="name" type="text" maxlength="6" value="${esc(b.name)}" title="名稱">
+          <button data-sb="del" class="del" title="刪除">✕</button>
+        </div>
+        <div class="br2">
+          花 <input data-sb="cost" type="number" min="1" max="99" step="1" value="${b.cost}"> 點・機率
+          <input data-sb="chance" type="number" min="1" max="100" step="5" value="${b.chance}">%・中了拿
+          <input data-sb="prize" type="number" min="1" max="999" step="1" value="${b.prize}"> 點
+        </div>
+        <div class="ev ${ev > 0.05 ? 'up' : ev < -0.05 ? 'down' : ''}">${evTxt}</div>
+      </div>`;
+    }).join('') || '<div class="edit-empty">還沒有押注選項。</div>';
   }
 
   function renderRewardSettings() {
@@ -673,9 +705,12 @@
       const draws = mine.filter((h) => h.type === 'lottery');
       const hits = draws.filter((h) => h.hit).length;
       const redeem = mine.filter((h) => h.type === 'redeem').length;
-      return `<tr><td>${esc(s.name)}</td><td class="up">+${plus}</td><td class="down">−${minus}</td><td>${draws.length}</td><td>${hits}</td><td>${hits ? (draws.length / hits).toFixed(1).replace('.0', '') : '−'}</td><td>${redeem}</td></tr>`;
+      const slots = mine.filter((h) => h.type === 'slot' && !h.keep);
+      const keeps = mine.filter((h) => h.type === 'slot' && h.keep).length;
+      const net = slots.reduce((a, h) => a + h.delta, 0);
+      return `<tr><td>${esc(s.name)}</td><td class="up">+${plus}</td><td class="down">−${minus}</td><td>${draws.length}</td><td>${hits}</td><td>${hits ? (draws.length / hits).toFixed(1).replace('.0', '') : '−'}</td><td>${redeem}</td><td>${slots.length}${keeps ? `／不拉 ${keeps}` : ''}</td><td class="${net > 0 ? 'up' : net < 0 ? 'down' : ''}">${slots.length ? (net > 0 ? '+' : '') + net : '−'}</td></tr>`;
     }).join('');
-    $('statsTable').innerHTML = `<thead><tr><th>學生</th><th>加分</th><th>扣分</th><th>抽獎</th><th>有加碼</th><th>平均幾次一加碼</th><th>兌換</th></tr></thead><tbody>${rows || '<tr><td colspan="7">還沒有學生</td></tr>'}</tbody>`;
+    $('statsTable').innerHTML = `<thead><tr><th>學生</th><th>加分</th><th>扣分</th><th>抽獎</th><th>有加碼</th><th>平均幾次一加碼</th><th>兌換</th><th>拉霸</th><th>拉霸淨得</th></tr></thead><tbody>${rows || '<tr><td colspan="9">還沒有學生</td></tr>'}</tbody>`;
     const recent = hs.slice(-40).reverse();
     $('logList').innerHTML = recent.length ? recent.map(logLine).join('') : '<div class="muted">這段期間還沒有紀錄</div>';
   }
@@ -766,74 +801,38 @@
   $('inPityOn').onchange = (e) => { L().pityOn = e.target.checked; save(); };
   $('inPityN').onchange = (e) => { L().pityN = Math.max(1, Math.min(20, Math.round(Number(e.target.value) || 4))); save(); renderLotterySettings(); };
   $('inSkin').onchange = (e) => { L().skin = e.target.value; save(); };
-  $('inPool').onchange = (e) => { data.activePoolId = e.target.value; save(); renderLotterySettings(); };
-  $('inPoolName').onchange = (e) => {
-    const n = e.target.value.trim();
-    if (!n) { renderLotterySettings(); return; }
-    snapshot('獎池改名'); Lottery.activePool().name = n; save(); renderLotterySettings();
+  $('inMachine').onchange = (e) => { editMachine = e.target.value; renderLotterySettings(); };
+
+  // 拉霸設定
+  $('inSlotOn').onchange = (e) => { data.settings.slot.on = e.target.checked; save(); };
+  $('btnBetAdd').onclick = () => {
+    if (data.settings.slot.bets.length >= 4) { toast('最多 4 種押注', false); return; }
+    snapshot('新增押注');
+    data.settings.slot.bets.push({ id: uid(), sym: '🍜', name: '新押注', cost: 2, chance: 25, prize: 6 });
+    save(); renderSlotSettings();
   };
-  $('btnPoolAdd').onclick = () => {
-    snapshot('新增獎池');
-    const p = { id: uid(), name: `獎池 ${data.pools.length + 1}`, items: [
-      { id: uid(), type: 'points', points: 0, count: 3, color: BALL_COLORS[0] },
-      { id: uid(), type: 'points', points: 1, count: 3, color: BALL_COLORS[1] }
-    ] };
-    data.pools.push(p); data.activePoolId = p.id; save(); renderLotterySettings();
-    $('inPoolName').focus(); $('inPoolName').select();
-  };
-  $('btnPoolCopy').onclick = () => {
-    snapshot('複製獎池');
-    const src = Lottery.activePool();
-    const p = { id: uid(), name: src.name + ' 複本', items: src.items.map((it) => ({ ...it, id: uid() })) };
-    data.pools.push(p); data.activePoolId = p.id; save(); renderLotterySettings();
-  };
-  $('btnPoolDel').onclick = async () => {
-    if (data.pools.length === 1) { toast('至少要保留一個獎池', false); return; }
-    const p = Lottery.activePool();
-    if (!(await confirmBox(`確定要刪除獎池「${p.name}」嗎？`, '刪除'))) return;
-    snapshot('刪除獎池');
-    data.pools = data.pools.filter((x) => x.id !== p.id);
-    data.activePoolId = data.pools[0].id;
-    save(); renderLotterySettings();
-  };
-  $('btnItemAdd').onclick = () => {
-    const p = Lottery.activePool();
-    snapshot('新增球');
-    p.items.push({ id: uid(), type: 'points', points: 1, count: 1, color: BALL_COLORS[p.items.length % BALL_COLORS.length] });
-    data.lotteryRemain = null;
-    save(); renderLotterySettings();
-  };
-  $('itemList').addEventListener('change', (e) => {
-    const row = e.target.closest('.item-row');
+  $('slotBetList').addEventListener('change', (e) => {
+    const row = e.target.closest('.bet-row');
     if (!row) return;
-    const it = Lottery.activePool().items.find((x) => x.id === row.dataset.iid);
-    if (!it) return;
-    snapshot('修改獎池');
-    const ed = e.target.dataset.ed;
-    if (ed === 'type') { it.type = e.target.value; if (it.type === 'prize' && !it.name) it.name = '獎品'; }
-    if (ed === 'points') it.points = Math.max(0, Math.min(99, Math.round(Number(e.target.value) || 0)));
-    if (ed === 'name') it.name = e.target.value.trim() || '獎品';
-    if (ed === 'count') it.count = Math.max(0, Math.min(99, Math.round(Number(e.target.value) || 0)));
-    data.lotteryRemain = null; // 改了獎池，這一輪重新裝滿
-    save(); renderLotterySettings();
+    const b = data.settings.slot.bets.find((x) => x.id === row.dataset.bid);
+    if (!b) return;
+    snapshot('修改押注');
+    const k = e.target.dataset.sb;
+    const num = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || lo)));
+    if (k === 'sym') b.sym = e.target.value;
+    if (k === 'name') b.name = e.target.value.trim() || b.name;
+    if (k === 'cost') b.cost = num(e.target.value, 1, 99);
+    if (k === 'chance') b.chance = num(e.target.value, 1, 100);
+    if (k === 'prize') b.prize = num(e.target.value, 1, 999);
+    save(); renderSlotSettings();
   });
-  $('itemList').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-ed]');
+  $('slotBetList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-sb="del"]');
     if (!btn) return;
-    const p = Lottery.activePool();
-    const it = p.items.find((x) => x.id === btn.closest('.item-row').dataset.iid);
-    if (!it) return;
-    if (btn.dataset.ed === 'color') {
-      snapshot('換顏色');
-      it.color = BALL_COLORS[(BALL_COLORS.indexOf(it.color) + 1) % BALL_COLORS.length];
-      save(); renderLotterySettings();
-    }
-    if (btn.dataset.ed === 'del') {
-      snapshot('刪除球');
-      p.items = p.items.filter((x) => x !== it);
-      data.lotteryRemain = null;
-      save(); renderLotterySettings();
-    }
+    if (data.settings.slot.bets.length <= 1) { toast('至少要留一種押注', false); return; }
+    snapshot('刪除押注');
+    data.settings.slot.bets = data.settings.slot.bets.filter((x) => x.id !== btn.closest('.bet-row').dataset.bid);
+    save(); renderSlotSettings();
   });
 
   // 獎勵設定
@@ -922,6 +921,7 @@
     else if (a === 'sheet') openStudentSheet(id);
     else if (a === 'lotto') openLotto(id);
     else if (a === 'redeem') openRedeem(id);
+    else if (a === 'slot') { const st = findStudent(id); if (st) Slot.open(st); }
   }
   ['list', 'grid'].forEach((id) => {
     $(id).addEventListener('click', (e) => onAct(e, false));
@@ -959,6 +959,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (Lottery.isOpen()) { Lottery.onKey(e); return; }
+    if (Slot.isOpen()) { Slot.onKey(e); return; }
     const typing = e.target.closest('input, textarea, select');
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undo(); }
     if (e.key === 'Escape') {
@@ -972,7 +973,7 @@
   // ---------- 給其他檔案用的 ----------
   window.W = {
     get data() { return data; },
-    cls, save, snapshot, renderAll, toast, banner, openSheet, closeSheet,
+    cls, save, snapshot, renderAll, toast, banner, openSheet, closeSheet, confirm: confirmBox,
     fileUrl: (rel, v) => dataUrl + rel + (v ? '?v=' + v : '')
   };
 

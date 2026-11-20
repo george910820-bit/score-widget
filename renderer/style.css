@@ -229,9 +229,9 @@ body.is-display.is-mini #display { display: none; }
 .d-prog .bar i { display: block; height: 100%; background: linear-gradient(90deg, #f5b82e, #f59e0b); border-radius: 99px; transition: width .4s; }
 .d-prog.can { color: #b26b00; font-weight: bold; }
 .d-prog.can .bar i { background: #2e9d5b; }
-.d-btns { display: flex; gap: calc(var(--u) * .3); margin-top: calc(var(--u) * .3); }
-.dcard .pm { width: calc(var(--u) * 1.75); height: calc(var(--u) * 1.4); font-size: calc(var(--u) * .9); border-radius: calc(var(--u) * .45); }
-.dcard .pm.lotto, .dcard .pm.gift { font-size: calc(var(--u) * .75); }
+.d-btns { display: flex; gap: calc(var(--u) * .22); margin-top: calc(var(--u) * .3); }
+.dcard .pm { width: calc(var(--u) * 1.55); height: calc(var(--u) * 1.4); font-size: calc(var(--u) * .9); border-radius: calc(var(--u) * .45); }
+.dcard .pm.lotto, .dcard .pm.gift, .dcard .pm.slot { font-size: calc(var(--u) * .72); }
 .dcard.bump-up { animation: cardUp .6s ease; }
 .dcard.bump-down { animation: cardDown .5s ease; }
 @keyframes cardUp { 0% { transform: scale(1); border-color: #2e9d5b; background: #e3f5ea; } 30% { transform: scale(1.05); } 100% { transform: scale(1); } }
@@ -264,7 +264,7 @@ body.is-display.is-mini #display { display: none; }
 .icon-in { text-align: center; font-family: "Segoe UI Emoji", sans-serif; }
 .remain-box { margin-top: 6px; }
 .remain-balls { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-.rb { background: var(--c); color: #fff; border-radius: 99px; padding: 2px 8px; font-size: .8em; font-weight: bold; }
+.rb { background: var(--c); color: var(--t, #fff); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); border-radius: 99px; padding: 2px 8px; font-size: .8em; font-weight: bold; }
 .table-wrap { overflow-x: auto; margin-bottom: 6px; }
 table.stats { border-collapse: collapse; width: 100%; font-size: .82em; white-space: nowrap; }
 table.stats th, table.stats td { padding: 4px 5px; border-bottom: 1px solid var(--line); text-align: right; }
@@ -350,26 +350,6 @@ body.is-display .lotto-top { padding: 10px 16px; font-size: 1.3em; }
 body.is-display .lotto-result { font-size: 1.6em; padding: 28px 40px 22px; }
 .lotto-result .btn-row button { padding: 8px 18px; font-size: 1em; }
 
-.caps.shake { animation: shake .12s linear infinite; transform-origin: 150px 112px; }
-@keyframes shake { 0% { transform: rotate(-3deg) translate(-2px, 1px); } 50% { transform: rotate(3deg) translate(2px, -1px); } 100% { transform: rotate(-3deg) translate(-2px, 1px); } }
-.cap-drop { position: absolute; width: 14%; aspect-ratio: 1; left: 50%; top: 90%; transform: translate(-50%, -50%) scale(.6); transition: all .55s cubic-bezier(.3,1.4,.6,1); z-index: 2; }
-.cap-drop.at-chute { transition: none; top: 88%; transform: translate(-50%, -50%) scale(.3); }
-.cap-drop.dropped { top: 93%; transform: translate(-50%, -50%) scale(.8); }
-.cap-drop.center { top: 42%; width: 40%; transform: translate(-50%, -50%) scale(1); transition: all .6s cubic-bezier(.3,1.3,.6,1); }
-.cap-top, .cap-bot { position: absolute; left: 0; width: 100%; height: 50%; border: 3px solid rgba(0,0,0,.18); transition: transform .4s ease; }
-.cap-top { top: 0; background: var(--c); border-radius: 999px 999px 0 0; border-bottom: 0; }
-.cap-bot { bottom: 0; background: #fff; border-radius: 0 0 999px 999px; border-top: 0; }
-.cap-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--c); font-size: 1.8em; opacity: 0; transition: opacity .3s .15s; text-shadow: 0 2px 0 #fff; }
-.cap-drop.open .cap-top { transform: translateY(-60%) rotate(-25deg); }
-.cap-drop.open .cap-bot { transform: translateY(60%) rotate(15deg); }
-.cap-drop.open .cap-label { opacity: 1; }
-body.is-display .cap-label { font-size: 3.4em; }
-.ball-reveal { position: absolute; left: 90.7%; top: 89.3%; width: 7.3%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
-  background: var(--c); display: flex; align-items: center; justify-content: center; transition: all .55s cubic-bezier(.3,1.3,.6,1); box-shadow: inset -6px -8px 0 rgba(0,0,0,.12); }
-.ball-reveal span { color: #fff; font-weight: bold; font-size: 0; transition: font-size .4s; text-shadow: 0 2px 0 rgba(0,0,0,.2); white-space: nowrap; }
-.ball-reveal.show { left: 50%; top: 45%; width: 38%; }
-.ball-reveal.show span { font-size: 2.2em; }
-body.is-display .ball-reveal.show span { font-size: 4.2em; }
 .die3 { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .die-face { width: 52%; aspect-ratio: 1; border-radius: 18%; background: #fff; border: 5px solid var(--c); display: flex; align-items: center; justify-content: center;
   box-shadow: inset 0 -10px 0 rgba(0,0,0,.06); transition: transform .09s; }
@@ -381,3 +361,135 @@ body.is-display .die-face span { font-size: 5.5em; }
 
 #grid.compact .d-prog span { display: none; }
 #grid.compact .d-prog { min-height: calc(var(--u) * .6); }
+
+/* ================= 第三版 ================= */
+.pm.slot { background: #ffe3e3; font-size: 1.05em; }
+.warn-note { color: #b26b00 !important; }
+.pool-editor .pool-bar select, .le-body .pool-bar select { font-weight: bold; }
+.pe-remain { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 4px; }
+.pe-remain button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 3px 8px; cursor: pointer; margin-left: auto; }
+.pe-sum { margin-top: 6px !important; }
+
+/* 抽獎畫面：機器圖層、變暗、聚光燈 */
+.lotto-stage { position: relative; }
+.machine { position: relative; container-type: size; }
+.machine .layer { position: absolute; inset: 0; }
+.spot { position: absolute; left: 50%; top: 50%; width: min(90%, 90vh); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,240,200,.55) 0%, rgba(255,240,200,.15) 45%, transparent 70%); opacity: 0; transition: opacity .6s; pointer-events: none; }
+.lotto-overlay { transition: background-color .6s; }
+.lotto-overlay.dark { background: #0c0a12; }
+.lotto-overlay.dark .spot { opacity: 1; }
+.lotto-overlay .lotto-top, .lotto-overlay .lotto-info, .lotto-overlay .lotto-actions { transition: opacity .5s; }
+.lotto-overlay.dark .lotto-top, .lotto-overlay.dark .lotto-info, .lotto-overlay.dark .lotto-actions { opacity: .12; }
+.edit-btn { background: #fff4dc !important; color: var(--ink) !important; margin-left: 6px; }
+
+/* 扭蛋機：扭蛋從出口滾出來、放大、打開 */
+.cap-drop { position: absolute; left: 50%; top: 88.5%; width: 9%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(.5); z-index: 3;
+  transition: all .6s cubic-bezier(.3,1.4,.6,1); filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
+.cap-drop.at-door { transition: none; opacity: 0; }
+.cap-drop.rolled { top: 95%; width: 12%; transform: translate(-50%, -50%) scale(1) rotate(200deg); }
+.cap-drop.center { top: 44%; width: 40%; transform: translate(-50%, -50%) rotate(0deg); transition: all .65s cubic-bezier(.3,1.25,.6,1); }
+.cap-top, .cap-bot { position: absolute; left: 0; width: 100%; height: 50%; border: 3px solid rgba(0,0,0,.18); transition: transform .45s ease, opacity .45s; }
+.cap-top { top: 0; background: var(--c); border-radius: 999px 999px 0 0; border-bottom: 0; }
+.cap-top::after { content: ''; position: absolute; left: 22%; top: 22%; width: 18%; height: 26%; border-radius: 50%; background: rgba(255,255,255,.55); }
+.cap-bot { bottom: 0; background: #fff; border-radius: 0 0 999px 999px; border-top: 0; }
+.cap-drop.open .cap-top { transform: translate(-30%, -70%) rotate(-35deg); opacity: .85; }
+.cap-drop.open .cap-bot { transform: translate(30%, 70%) rotate(25deg); opacity: .85; }
+
+/* 抽到的獎項：有底色的牌子 */
+.reveal { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); z-index: 4; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.reveal.hidden { display: none; }
+.prize-badge { background: var(--c); color: var(--t); border: .9cqw solid #fff; border-radius: 999px; padding: 1.2cqw 5cqw; font-size: 14cqw; font-weight: bold; line-height: 1.15;
+  white-space: nowrap; box-shadow: 0 1.5cqw 4cqw rgba(0,0,0,.35), 0 0 0 .6cqw rgba(0,0,0,.08); animation: badgePop .5s cubic-bezier(.3,1.6,.5,1); }
+@keyframes badgePop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+.reveal.ball .big-ball { width: 30cqw; height: 30cqw; border-radius: 50%; background: var(--c); box-shadow: inset -3cqw -4cqw 0 rgba(0,0,0,.14), inset 2cqw 2cqw 0 rgba(255,255,255,.35), 0 2cqw 5cqw rgba(0,0,0,.3);
+  margin-bottom: -6cqw; animation: badgePop .45s cubic-bezier(.3,1.5,.5,1); border: .5cqw solid rgba(0,0,0,.15); }
+
+/* 日本抽獎機 */
+.m-garapon { touch-action: none; cursor: grab; }
+.m-garapon:active { cursor: grabbing; }
+.garapon-svg .grip { filter: drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
+.g-hint { position: absolute; left: 50%; top: 2%; transform: translateX(-50%); background: #fff; border: 2px solid #8d3b1f; color: #8d3b1f; font-weight: bold;
+  padding: 1cqw 3.5cqw; border-radius: 999px; font-size: 5.2cqw; white-space: nowrap; animation: hintBob 1.2s ease-in-out infinite; pointer-events: none; }
+.g-hint.gone { display: none; }
+@keyframes hintBob { 50% { transform: translateX(-50%) translateY(-1.2cqw); } }
+.bell.ring { animation: bellRing .26s ease-in-out 6 alternate; transform-box: view-box; }
+@keyframes bellRing { 0% { transform: rotate(-22deg); } 100% { transform: rotate(22deg); } }
+
+/* 抽獎畫面裡的獎項編輯 */
+.lotto-editor { position: absolute; left: 0; right: 0; bottom: 0; top: 0; background: var(--bg); color: var(--ink); z-index: 8; display: flex; flex-direction: column; }
+.le-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--head); color: #fff; }
+.le-head button { border: 0; border-radius: 8px; padding: 6px 16px; cursor: pointer; font-weight: bold; }
+.le-body { flex: 1; overflow-y: auto; padding: 12px; max-width: 560px; width: 100%; margin: 0 auto; user-select: text; }
+body.is-display .le-body { font-size: 1.15em; }
+
+/* ---------- 吃角子老虎機 ---------- */
+.slot-overlay { position: fixed; inset: 0; z-index: 50; background: #3a1f4d; color: #fff; display: flex; flex-direction: column; }
+.slot-title { font-weight: bold; font-size: 1.05em; color: #ffe082; }
+.slot-main { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 8px 10px; }
+.slot-main.wide { flex-direction: row; gap: 28px; }
+.slot-cab { position: relative; flex: none; background: #d62e3a; border: calc(var(--u) * 1.6) solid #f5b82e; border-radius: calc(var(--u) * 7); padding: calc(var(--u) * 3);
+  box-shadow: 0 calc(var(--u) * 2) 0 #8f1d26; margin-right: calc(var(--u) * 13); box-sizing: border-box; }
+.slot-sign { background: #7a1420; border-radius: calc(var(--u) * 3); padding: calc(var(--u) * 1.5) calc(var(--u) * 2); text-align: center; margin-bottom: calc(var(--u) * 3); }
+.bulbs { display: flex; justify-content: space-between; margin-bottom: calc(var(--u) * 1); }
+.bulbs i { width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6); border-radius: 50%; background: #ffd54f; animation: blink 1.2s infinite alternate; }
+.bulbs i:nth-child(even) { animation-delay: .6s; }
+@keyframes blink { 0% { background: #ffd54f; box-shadow: 0 0 calc(var(--u) * 1.5) #ffd54f; } 100% { background: #7a5a10; box-shadow: none; } }
+.spinning .bulbs i { animation-duration: .22s; }
+.win .bulbs i { animation-duration: .1s; }
+.slot-name { font-size: calc(var(--u) * 7); font-weight: bold; color: #ffe082; letter-spacing: calc(var(--u) * .5); line-height: 1.2; }
+.slot-window { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(var(--u) * 1.5); background: #3b2f22; padding: calc(var(--u) * 1.5); border-radius: calc(var(--u) * 3); }
+.reel { position: relative; height: calc(var(--u) * 54); overflow: hidden; background: #fffaf0; border-radius: calc(var(--u) * 2); }
+.reel::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(rgba(0,0,0,.35), transparent 28%, transparent 72%, rgba(0,0,0,.35)); }
+.strip { will-change: transform; }
+.sym { height: calc(var(--u) * 18); display: flex; align-items: center; justify-content: center; font-size: calc(var(--u) * 12); font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.payline { position: absolute; left: 0; right: 0; top: 50%; height: calc(var(--u) * .9); margin-top: calc(var(--u) * -.45); background: rgba(229,57,53,.75); pointer-events: none; }
+.win .payline { animation: blink2 .15s infinite alternate; }
+@keyframes blink2 { 100% { background: #ffd54f; } }
+.slot-tray { margin-top: calc(var(--u) * 3); height: calc(var(--u) * 9); background: #2a1a12; border-radius: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 4) calc(var(--u) * 4);
+  display: flex; align-items: center; justify-content: center; font-size: calc(var(--u) * 5); }
+.lever { position: absolute; left: 100%; top: calc(var(--u) * 14); width: calc(var(--u) * 12); height: calc(var(--u) * 52); cursor: grab; touch-action: none; margin-left: calc(var(--u) * 1.6); }
+.lever-base { position: absolute; left: 0; bottom: 0; width: calc(var(--u) * 7); height: calc(var(--u) * 12); background: #9e9e9e; border-radius: 0 calc(var(--u) * 2) calc(var(--u) * 2) 0; }
+.lever-rod { position: absolute; left: 50%; margin-left: calc(var(--u) * -1.2); bottom: calc(var(--u) * 6); width: calc(var(--u) * 2.4); height: calc(100% - var(--u) * 10); background: #cfd8dc; border-radius: 99px; transform-origin: bottom; }
+.lever-knob { position: absolute; left: 50%; top: 0; width: calc(var(--u) * 10); height: calc(var(--u) * 10); border-radius: 50%; background: #e53935;
+  box-shadow: inset calc(var(--u) * -1.5) calc(var(--u) * -1.5) 0 rgba(0,0,0,.2), inset calc(var(--u) * 1.2) calc(var(--u) * 1.2) 0 rgba(255,255,255,.35); transform: translate(-50%, 0); }
+.lever.ready .lever-knob { animation: nudge 1.3s ease-in-out infinite; }
+@keyframes nudge { 50% { transform: translate(-50%, calc(var(--u) * 3)); } }
+.busy .lever { pointer-events: none; }
+.bets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(100%, 560px); flex: none; }
+.slot-main.wide .bets { width: min(42%, 480px); }
+.bet { position: relative; background: #fff; color: var(--ink); border: 3px solid transparent; border-radius: 14px; padding: 7px 10px; text-align: left; cursor: pointer; font-size: .9em; transition: transform .12s; }
+.bet:hover { transform: translateY(-2px); }
+.bet.sel { border-color: #f5b82e; box-shadow: 0 0 0 4px rgba(245,184,46,.45); }
+.bet.no { opacity: .45; }
+.bet .bt { font-weight: bold; font-size: 1.1em; }
+.bet .bc { color: #c2553f; font-weight: bold; }
+.bet.keep .bc { color: #2e9d5b; }
+.bet .bp { letter-spacing: -1px; margin: 2px 0; white-space: nowrap; overflow: hidden; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.bet .bp span { filter: grayscale(1); opacity: .22; }
+.bet .bp span.on { filter: none; opacity: 1; }
+.bet .bd { font-size: .8em; color: var(--muted); }
+.bet .bw { font-size: .9em; color: #2e9d5b; font-weight: bold; }
+.bet .bno { position: absolute; top: 6px; right: 8px; font-size: .75em; color: #c2553f; font-weight: bold; }
+body.is-display .bet { font-size: 1.3em; padding: 12px 16px; }
+.slot-overlay .lotto-info { color: #e9d7ff; }
+.busy .bets { pointer-events: none; opacity: .7; }
+.slot-overlay .lotto-result { color: var(--ink); }
+
+/* 設定：押注列 */
+.bet-row { border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; margin-bottom: 8px; }
+.bet-row .br1 { display: grid; grid-template-columns: 96px minmax(0,1fr) 26px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.bet-row .br2 { font-size: .85em; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.bet-row .br2 input { width: 46px; }
+.bet-row select, .bet-row input { min-width: 0; width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 4px 5px; background: #fff; }
+.bet-row .br2 input { width: 48px; }
+.bet-row .ev { font-size: .78em; color: var(--muted); margin-top: 4px; }
+.bet-row .del { border: 0; background: transparent; color: var(--minus); cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.bet-row .del:hover { background: var(--minus-bg); }
+.bet-row .ev.up { color: var(--plus); } .bet-row .ev.down { color: var(--minus); }
+@media (max-width: 720px) {
+  .lotto-top { flex-wrap: wrap; }
+  .lotto-top .lotto-x { order: 2; }
+  .lotto-top .skin-tabs { order: 3; flex-basis: 100%; flex-wrap: wrap; }
+}
+.tabs button { padding: 6px 6px; }

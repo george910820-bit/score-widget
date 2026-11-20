@@ -66,6 +66,7 @@
       <button data-tab="score">加減分</button>
       <button data-tab="lottery">抽獎機</button>
       <button data-tab="reward">獎勵</button>
+      <button data-tab="slot">拉霸</button>
       <button data-tab="sound">音效</button>
       <button data-tab="look">外觀</button>
       <button data-tab="stats">紀錄</button>
@@ -130,27 +131,18 @@
         </div>
 
         <div class="card">
-          <h3>獎池（放幾顆球決定機率）</h3>
-          <div class="pool-bar">
-            <select id="inPool"></select>
-            <button id="btnPoolAdd" title="新增獎池">新增</button>
-            <button id="btnPoolCopy" title="複製這個獎池">複製</button>
-            <button id="btnPoolDel" class="warn" title="刪除這個獎池">刪除</button>
-          </div>
-          <label class="field">獎池名稱（例如：建立期、穩定期）
-            <input id="inPoolName" type="text" maxlength="12">
+          <h3>獎項和機率（放幾顆決定機率）</h3>
+          <label class="field inline">要編輯哪一台
+            <select id="inMachine"></select>
           </label>
-          <div class="item-head"><span>顏色</span><span>種類</span><span>內容</span><span>顆數</span><span>機率</span><span></span></div>
-          <div id="itemList"></div>
-          <div class="btn-row"><button id="btnItemAdd">＋ 新增一種球</button></div>
-          <p class="muted" id="poolSummary"></p>
+          <p class="muted">每台機器各自用一組獎池。抽獎畫面右上角的「✏️ 獎項」也可以直接改。</p>
+          <div id="poolEditor" class="pool-editor"></div>
         </div>
 
         <div class="card">
           <h3>抽出來的球要放回去嗎</h3>
           <label class="check"><input type="radio" name="replace" value="no"> 不放回：抽完一輪再重新裝滿（天生有保底）</label>
           <label class="check"><input type="radio" name="replace" value="yes"> 放回：每次機率都一樣</label>
-          <div id="remainBox" class="remain-box"></div>
         </div>
 
         <div class="card">
@@ -162,11 +154,11 @@
         </div>
 
         <div class="card">
-          <h3>抽獎機外觀</h3>
-          <label class="field inline">預設外觀
+          <h3>預設機器</h3>
+          <label class="field inline">打開抽獎時先用
             <select id="inSkin"></select>
           </label>
-          <p class="muted">抽獎畫面上方也可以隨時切換外觀，機率不會改變。</p>
+          <p class="muted">抽獎畫面上方可以隨時換機器。日本抽獎機可以讓小朋友自己抓把手轉一圈。</p>
         </div>
       </div>
 
@@ -178,6 +170,21 @@
           <div class="reward-head"><span>圖示</span><span>獎勵名稱</span><span>需要點數</span><span></span></div>
           <div id="rewardList"></div>
           <div class="btn-row"><button id="btnRewardAdd">＋ 新增獎勵</button></div>
+        </div>
+      </div>
+
+      <!-- 拉霸 -->
+      <div data-pane="slot" class="hidden">
+        <div class="card">
+          <h3>吃角子老虎機（拉霸）</h3>
+          <label class="check"><input id="inSlotOn" type="checkbox"> 開啟拉霸（學生小卡和展示模式會出現 🎰）</label>
+          <p class="muted">學生要先選「不拉」或押哪一個：押越大，花的點數越多、中獎機率越低、獎品越大。拉之前會用圖示顯示「10 次大約中幾次」，讓學生自己取捨（機會成本）。</p>
+        </div>
+        <div class="card">
+          <h3>押注選項</h3>
+          <div id="slotBetList"></div>
+          <div class="btn-row"><button id="btnBetAdd">＋ 新增押注</button></div>
+          <p class="muted">每一列下面會算出「平均每拉一次會多或少幾點」，方便你設計：例如押大看起來獎品很大，其實平均會虧。</p>
         </div>
       </div>
 
@@ -261,7 +268,7 @@
         </div>
       </div>
 
-      <p class="version">學生加分小工具 v2.0.0</p>
+      <p class="version">學生加分小工具 v3.0.0</p>
     </div>
   </section>
 
@@ -283,6 +290,7 @@
 <script src="sound.js"></script>
 <script src="avatar.js"></script>
 <script src="lottery.js"></script>
+<script src="slot.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

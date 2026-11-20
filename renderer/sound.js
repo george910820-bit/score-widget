@@ -33,6 +33,15 @@ window.Sound = (() => {
     o.stop(t0 + dur + 0.02);
   }
 
+  let noise = null;
+  function noiseBuf(a) {
+    if (noise) return noise;
+    noise = a.createBuffer(1, a.sampleRate * 0.2, a.sampleRate);
+    const d = noise.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return noise;
+  }
+
   function playFile(rel) {
     try {
       const url = baseUrl + rel + '?v=' + (cfg.fileVersion || 0);
@@ -100,6 +109,73 @@ window.Sound = (() => {
       if (!cfg.on) return;
       tone(1175, 0, 0.1, 'triangle', 0.25);
       tone(1568, 0.07, 0.18, 'triangle', 0.25);
+    },
+    // 緊張的鼓聲：越來越快、音越來越高，回傳一個停止的函式
+    suspense(ms = 3000) {
+      if (!cfg.on) return () => {};
+      const a = ac();
+      if (!a) return () => {};
+      const start = a.currentTime;
+      const end = start + ms / 1000;
+      const nodes = [];
+      let t = start, gap = 0.16;
+      while (t < end) {
+        const p = (t - start) / (ms / 1000);
+        const src = a.createBufferSource();
+        src.buffer = noiseBuf(a);
+        const f = a.createBiquadFilter();
+        f.type = 'bandpass'; f.frequency.value = 180 + p * 260; f.Q.value = 1.2;
+        const g = a.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime((0.25 + p * 0.45) * vol(), t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+        src.connect(f).connect(g).connect(a.destination);
+        src.start(t); src.stop(t + 0.1);
+        nodes.push(src);
+        t += gap; gap = Math.max(0.045, gap * 0.94);
+      }
+      // 背景慢慢升高的音
+      const o = a.createOscillator(), og = a.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(110, start);
+      o.frequency.exponentialRampToValueAtTime(330, end);
+      og.gain.setValueAtTime(0.0001, start);
+      og.gain.exponentialRampToValueAtTime(0.035 * vol() + 0.0001, end);
+      o.connect(og).connect(a.destination);
+      o.start(start); o.stop(end + 0.05);
+      nodes.push(o);
+      return () => { nodes.forEach((n) => { try { n.stop(); } catch (e) { /* 已經停了 */ } }); };
+    },
+    // 日本抽獎機裡面球碰撞的喀啦聲
+    rattle() {
+      if (!cfg.on) return;
+      const n = 1 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < n; i++) tone(900 + Math.random() * 900, i * 0.03, 0.035, 'square', 0.06);
+    },
+    // 中獎的手搖鈴：噹啷噹啷
+    bell() {
+      if (!cfg.on) return;
+      for (let i = 0; i < 9; i++) {
+        const t = i * 0.13;
+        [1, 2.76, 5.4].forEach((r, k) => tone(1180 * r * (i % 2 ? 1.02 : 1), t, 0.5 - k * 0.12, 'sine', 0.16 / (k + 1)));
+      }
+    },
+    // 拉霸：拉桿
+    lever() {
+      if (!cfg.on) return;
+      tone(220, 0, 0.12, 'square', 0.1, 120);
+      tone(600, 0.1, 0.18, 'triangle', 0.12, 900);
+    },
+    // 拉霸：一個轉輪停下
+    reelStop() {
+      if (!cfg.on) return;
+      tone(140, 0, 0.1, 'square', 0.14, 80);
+      tone(1400, 0, 0.04, 'square', 0.05);
+    },
+    // 拉霸中獎：叮叮叮的硬幣聲
+    coins() {
+      if (!cfg.on) return;
+      for (let i = 0; i < 14; i++) tone(1800 + Math.random() * 900, i * 0.06, 0.12, 'triangle', 0.14);
     },
     test(kind) {
       const was = cfg.on;
