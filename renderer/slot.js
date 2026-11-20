@@ -1,4 +1,4 @@
-// 吃角子老虎機（拉霸）：學生自己選押注大小，體驗機率與機會成本
+// 吃角子老虎機（拉霸）：在遊戲區用入場券押注，學生自己選押注大小，體驗機率與機會成本
 // 圖案用台灣小吃；拉之前用圖示顯示「10 次大約中幾次」；不做「差一點就中」的誘導畫面
 window.Slot = (() => {
   'use strict';
@@ -8,11 +8,14 @@ window.Slot = (() => {
   const SYM_NAME = { '🥟': '餃子', '🧋': '珍奶', '🍜': '牛肉麵', '🍢': '黑輪', '🍧': '剉冰', '🍗': '雞排' };
   const rnd = () => SYMS[Math.floor(Math.random() * SYMS.length)];
   const S = () => W.data.settings.slot;
+  const price = () => Number(W.data.settings.zone.price) || 10;
 
   let cur = null; // { student, bet, busy, root, reels }
 
-  function open(student) {
+  let onCloseCb = null;
+  function open(student, onClose) {
     close();
+    onCloseCb = onClose || null;
     const root = document.createElement('div');
     root.className = 'slot-overlay';
     root.innerHTML = `
@@ -21,7 +24,7 @@ window.Slot = (() => {
         <div class="slot-title">🎰 吃角子老虎機</div>
         <button class="icon-btn lotto-x" id="slotClose" title="關閉（Esc）">✕</button>
       </div>
-      <div class="slot-main" id="slotMain">
+      <div class="slot-main" id="slotMain"><div class="fx-behind"></div>
         <div class="slot-cab" id="slotCab">
           <div class="slot-sign"><div class="bulbs">${'<i></i>'.repeat(11)}</div><div class="slot-name">吃角子老虎機</div></div>
           <div class="slot-window">
@@ -45,7 +48,7 @@ window.Slot = (() => {
     root.querySelector('#slotBets').onclick = (e) => {
       const b = e.target.closest('[data-bet]');
       if (!b || cur.busy) return;
-      if (b.classList.contains('no')) { W.toast('點數不夠，不能押這個', false); Sound.minus(); return; }
+      if (b.classList.contains('no')) { W.toast('入場券不夠，不能押這個', false); Sound.minus(); return; }
       cur.bet = b.dataset.bet;
       Sound.tick();
       renderBets();
@@ -81,28 +84,28 @@ window.Slot = (() => {
     const keep = `
       <button class="bet keep${cur.bet === 'keep' ? ' sel' : ''}" data-bet="keep">
         <div class="bt">🙅 不拉</div>
-        <div class="bc">保留 ⭐ ${s.score} 點</div>
-        <div class="bd">點數不會少，也不會多</div>
+        <div class="bc">入場券 🎟 ${s.zoneTickets || 0} 張都留著</div>
+        <div class="bd">不會少，也不會多</div>
       </button>`;
     cur.root.querySelector('#slotBets').innerHTML = keep + bets.map((b) => {
       const n = Math.round(b.chance / 10);
       const icons = Array.from({ length: 10 }, (_, i) => `<span class="${i < n ? 'on' : ''}">${b.sym}</span>`).join('');
-      const no = s.score < b.cost;
+      const no = (s.zoneTickets || 0) < b.cost;
       return `
       <button class="bet${cur.bet === b.id ? ' sel' : ''}${no ? ' no' : ''}" data-bet="${b.id}">
         <div class="bt">${b.sym} ${esc(b.name)}</div>
-        <div class="bc">花 ${b.cost} 點</div>
+        <div class="bc">用 ${b.cost} 張入場券</div>
         <div class="bp" title="機率 ${b.chance}%">${icons}</div>
         <div class="bd">10 次大約中 ${n} 次</div>
         <div class="bw">中了拿 ${b.prize} 點</div>
-        ${no ? '<div class="bno">點數不夠</div>' : ''}
+        ${no ? '<div class="bno">入場券不夠</div>' : ''}
       </button>`;
     }).join('');
-    cur.root.querySelector('#slotSub').textContent = `⭐ ${s.score}`;
+    cur.root.querySelector('#slotSub').textContent = `⭐ ${s.score}・🎟 入場券 ${s.zoneTickets || 0} 張`;
     const go = cur.root.querySelector('#slotGo');
     const bet = bets.find((b) => b.id === cur.bet);
     go.classList.toggle('off', !cur.bet);
-    go.textContent = !cur.bet ? '先選一個' : cur.bet === 'keep' ? '就保留，不拉了' : `拉！（花 ${bet.cost} 點）`;
+    go.textContent = !cur.bet ? '先選一個' : cur.bet === 'keep' ? '不拉了，回遊戲區' : `拉！（用 ${bet.cost} 張）`;
     cur.root.querySelector('#slotLever').classList.toggle('ready', !!bet);
     requestAnimationFrame(layout);
   }
@@ -126,19 +129,18 @@ window.Slot = (() => {
       const st = cur.root.querySelector('#strip' + i);
       const now = cur.syms[i];
       const next = [rnd(), targets[i], rnd()];
-      const filler = Array.from({ length: 18 + i * 7 }, rnd);
+      const filler = Array.from({ length: 26 + i * 14 + (i === 2 ? 18 : 0) }, rnd);
       const arr = [...next, ...filler, ...now];
       st.style.transition = 'none';
       st.innerHTML = stripHTML(arr);
       const rowH = st.firstElementChild.getBoundingClientRect().height;
       st.style.transform = `translateY(${-(arr.length - 3) * rowH}px)`;
       void st.offsetHeight;
-      const dur = 1.3 + i * 0.6 + (i === 2 ? 0.7 : 0);
-      st.style.transition = `transform ${dur}s cubic-bezier(.12,.75,.25,1.03)`;
+      const dur = [2.0, 3.3, 6.0][i];
+      st.style.transition = i === 2 ? `transform ${dur}s cubic-bezier(.1,.55,.06,1)` : `transform ${dur}s cubic-bezier(.12,.75,.25,1.03)`;
       st.style.transform = 'translateY(0)';
       cur.syms[i] = next;
-      jobs.push(sleep(dur * 1000).then(() => Sound.reelStop()));
-      if (i === 2) setTimeout(() => { if (cur) Sound.suspense(1200); }, (1.3 + 0.6 * 1) * 1000);
+      jobs.push(sleep(dur * 1000).then(() => { Sound.reelStop(); const r = cur && cur.root.querySelectorAll('.reel')[i]; if (r) { r.classList.add('stopped'); } }));
     }
     await Promise.all(jobs);
     clearInterval(ticks);
@@ -205,49 +207,58 @@ window.Slot = (() => {
     const s = cur.student;
     const bet = S().bets.find((b) => b.id === cur.bet);
     if (!bet || cur.busy) return;
-    if (s.score < bet.cost) { W.toast('點數不夠，不能押這個', false); return; }
+    if ((s.zoneTickets || 0) < bet.cost) { W.toast('入場券不夠，不能押這個', false); return; }
     W.snapshot(`${s.name} 拉霸`);
     const win = Math.random() < bet.chance / 100;
     const before = s.score;
-    s.score = s.score - bet.cost + (win ? bet.prize : 0);
+    const ticketsBefore = s.zoneTickets || 0;
+    s.zoneTickets = ticketsBefore - bet.cost;
+    s.score = s.score + (win ? bet.prize : 0);
     const delta = s.score - before;
     W.data.history.push({
       t: new Date().toISOString(), type: 'slot', classId: W.cls().id, studentId: s.id, name: s.name,
-      delta, score: s.score, item: bet.name, cost: bet.cost, win, prize: win ? bet.prize : 0, chance: bet.chance
+      delta, score: s.score, item: bet.name, cost: bet.cost, tickets: bet.cost, win, prize: win ? bet.prize : 0, chance: bet.chance
     });
     W.save();
     cur.busy = true;
     const root = cur.root;
     root.classList.add('busy', 'spinning');
     root.querySelector('#slotResult').classList.add('hidden');
-    root.querySelector('#slotSub').textContent = `⭐ ${before - bet.cost}（花了 ${bet.cost} 點）`;
+    root.querySelector('#slotSub').textContent = `⭐ ${before}・🎟 入場券 ${s.zoneTickets} 張（用了 ${bet.cost} 張）`;
+    FX.clear(root);
+    root.querySelectorAll('.reel').forEach((r) => r.classList.remove('stopped'));
+    const stopWait = FX.suspense(root, 6000);
     let targets;
     if (win) targets = [bet.sym, bet.sym, bet.sym];
     else do { targets = [rnd(), rnd(), rnd()]; } while (targets[0] === targets[1] && targets[1] === targets[2]);
     await spinReels(targets);
+    stopWait();
     if (!cur || cur.root !== root) { W.renderAll(); return; }
     root.classList.remove('spinning');
-    if (win) { root.classList.add('win'); Sound.coins(); setTimeout(() => Sound.win(), 300); Lottery.confetti(bet.prize >= 10 ? 220 : 120); } else Sound.zero();
+    // 中獎專屬特效：押最大的那一種中了＝大獎
+    const maxPrize = Math.max(...S().bets.map((b) => b.prize));
+    if (win) { root.classList.add('win'); Sound.coins(); FX.win(root, bet.prize >= maxPrize ? 'big' : 'small', root.querySelector('.fx-behind')); } else FX.win(root, 'miss');
     W.renderAll();
-    await sleep(900);
+    await sleep(1100);
     if (!cur || cur.root !== root) return;
     root.classList.remove('busy', 'win');
     cur.busy = false;
-    showResult({ bet, win, before, after: s.score, targets });
+    showResult({ bet, win, before, after: s.score, targets, ticketsBefore });
   }
 
   function showResult(r) {
     const box = cur.root.querySelector('#slotResult');
+    const worth = r.bet.cost * price();
     const lines = r.win
-      ? [`花 ${r.bet.cost} 點，拿到 ${r.bet.prize} 點`, `比不拉多了 ${r.bet.prize - r.bet.cost} 點`]
-      : [`花掉的 ${r.bet.cost} 點拿不回來`, `如果剛剛選「不拉」，現在會有 ⭐ ${r.before} 點`];
-    lines.push(`現在 ⭐ ${r.after}`);
+      ? [`用了 ${r.bet.cost} 張入場券（值 ${worth} 點），拿到 ${r.bet.prize} 點`, r.bet.prize >= worth ? `比入場券的價值多了 ${r.bet.prize - worth} 點` : `比入場券的價值還少 ${worth - r.bet.prize} 點`]
+      : [`用掉的 ${r.bet.cost} 張入場券（值 ${worth} 點）拿不回來`, `如果剛剛選「不拉」，入場券還會有 ${r.ticketsBefore} 張`];
+    lines.push(`現在 ⭐ ${r.after}・🎟 ${cur.student.zoneTickets || 0} 張`);
     box.innerHTML = `
       <div class="res-big ${r.win ? 'hit' : 'miss'}" style="--c:#d62e3a">${r.win ? `${r.targets.join('')} 中了！` : '沒中…'}</div>
       <div class="res-lines">${lines.map((l) => `<div>${l}</div>`).join('')}</div>
       <div class="btn-row center"><button id="slotAgain" class="primary">再選一次</button><button id="slotEnd">結束</button></div>`;
     box.classList.remove('hidden');
-    box.querySelector('#slotAgain').onclick = () => { box.classList.add('hidden'); cur.bet = null; renderBets(); };
+    box.querySelector('#slotAgain').onclick = () => { box.classList.add('hidden'); FX.clear(cur.root); cur.bet = null; renderBets(); };
     box.querySelector('#slotEnd').onclick = close;
     renderBets();
   }
@@ -259,8 +270,8 @@ window.Slot = (() => {
     W.save();
     const box = cur.root.querySelector('#slotResult');
     box.innerHTML = `
-      <div class="res-big hit" style="--c:#2e9d5b">保留點數 👍</div>
-      <div class="res-lines"><div>你選擇不拉，⭐ ${s.score} 點都留著</div><div>可以存起來換獎勵</div></div>
+      <div class="res-big hit" style="--c:#2e9d5b">不拉，留著 👍</div>
+      <div class="res-lines"><div>入場券 🎟 ${s.zoneTickets || 0} 張都留著</div><div>下次想玩再用</div></div>
       <div class="btn-row center"><button id="slotEnd" class="primary">好！</button></div>`;
     box.classList.remove('hidden');
     box.querySelector('#slotEnd').onclick = close;
@@ -269,10 +280,13 @@ window.Slot = (() => {
 
   function close() {
     if (!cur) return;
+    const st = cur.student;
     cur.root.remove();
     cur = null;
     window.removeEventListener('resize', layout);
     W.renderAll();
+    const cb = onCloseCb; onCloseCb = null;
+    if (cb) cb(st);
   }
 
   function onKey(e) {

@@ -284,11 +284,11 @@ window.Lottery = (() => {
       const st = this.st;
       if (!st) return;
       ctx.dark(true);
-      const stop = Sound.suspense(3600);
+      const stop = ctx.wait(7400);
       st.mode = 'pop';
       const t0 = performance.now();
-      while (performance.now() - t0 < 2700 && this.st === st) {
-        st.intensity = 0.45 + (performance.now() - t0) / 2700 * 1.0;
+      while (performance.now() - t0 < 4300 && this.st === st) {
+        st.intensity = 0.4 + (performance.now() - t0) / 4300 * 1.1;
         await sleep(60);
       }
       if (this.st !== st) { stop(); return; }
@@ -298,7 +298,6 @@ window.Lottery = (() => {
       knob.style.transform = 'rotate(360deg)';
       Sound.clunk(); setTimeout(() => Sound.clunk(), 300); setTimeout(() => Sound.clunk(), 600);
       await sleep(950);
-      stop();
       // 從機器裡拿掉一顆同顏色的（看起來真的少了一顆）
       const idx = st.balls.findIndex((b) => b.item.id === item.id);
       if (idx >= 0 && !L().replace) st.balls.splice(idx, 1);
@@ -309,6 +308,11 @@ window.Lottery = (() => {
       cap.className = 'cap-drop rolled';
       Sound.clunk();
       await sleep(700);
+      // 扭蛋在出口前搖來搖去，再等一下下
+      cap.classList.add('wobble');
+      await sleep(1500);
+      cap.classList.remove('wobble');
+      stop();
       ctx.dark(false);
       cap.className = 'cap-drop center';
       await sleep(650);
@@ -455,6 +459,15 @@ window.Lottery = (() => {
         if (i === 4) Sound.clunk();
         await sleep(i < 4 ? 70 : 110);
       }
+      // 球在盤子裡：燈光變暗、聚光、等一下才揭曉
+      const ctx = st.ctx;
+      ctx.dark(true);
+      ball.classList.add('glowing');
+      const stop = ctx.wait(2600);
+      await sleep(2600);
+      stop();
+      ball.classList.remove('glowing');
+      ctx.dark(false);
       if (isHit(item)) {
         const bell = box.querySelector('.bell');
         bell.setAttribute('opacity', '1');
@@ -503,18 +516,22 @@ window.Lottery = (() => {
         </svg>`;
       this.rot = this.rot % 360;
     },
-    async play(box, item) {
+    async play(box, item, ctx) {
+      ctx.dark(true);
+      const stop = ctx.wait(7600);
       const seg = this.segs.find((s) => s.id === item.id) || this.segs[0];
       const a = seg.a0 + (seg.a1 - seg.a0) * (0.18 + Math.random() * 0.64);
       const cur = ((this.rot % 360) + 360) % 360;
       const need = ((360 - a - cur) % 360 + 360) % 360;
       this.rot += 360 * 5 + need;
       const g = box.querySelector('.wheel');
-      g.style.transition = 'transform 4.2s cubic-bezier(.15,.7,.2,1)';
+      g.style.transition = 'transform 7.2s cubic-bezier(.08,.62,.08,1)';
       g.style.transform = `rotate(${this.rot}deg)`;
-      let t = 0, gap = 40;
-      while (t < 3900) { setTimeout(() => Sound.tick(), t); t += gap; gap *= 1.11; }
-      await sleep(4400);
+      let t = 0, gap = 35;
+      while (t < 7000) { setTimeout(() => Sound.tick(), t); t += gap; gap *= 1.075; }
+      await sleep(7500);
+      stop();
+      ctx.dark(false);
     }
   };
 
@@ -524,21 +541,31 @@ window.Lottery = (() => {
       const first = displayBalls('dice', 6)[0];
       box.innerHTML = `<div class="die3"><div class="die-face" style="--c:${first ? first.color : '#999'}"><span>${first ? esc(shortLabel(first)) : '?'}</span></div><div class="die-shadow"></div></div>`;
     },
-    async play(box, item) {
+    async play(box, item, ctx) {
+      ctx.dark(true);
+      const stop = ctx.wait(5200);
       const face = box.querySelector('.die-face');
       const pool = displayBalls('dice', 30);
       face.classList.add('rolling');
-      for (let i = 0; i < 16; i++) {
+      for (let i = 0; i < 30; i++) {
         const it = pool[i % pool.length];
         face.style.setProperty('--c', it.color);
         face.querySelector('span').textContent = shortLabel(it);
         face.style.transform = `translate(${(Math.random() - 0.5) * 40}px, ${-Math.random() * 40}px) rotate(${Math.round((Math.random() - 0.5) * 140)}deg)`;
         if (i % 3 === 0) Sound.tick();
-        await sleep(55 + i * 6);
+        await sleep(50 + i * 5);
       }
+      // 骰子立起來晃一晃，最後才倒下
       face.classList.remove('rolling');
       face.style.setProperty('--c', item.color);
       face.querySelector('span').textContent = shortLabel(item);
+      face.style.transform = 'translate(0,-10px) rotate(28deg)';
+      Sound.clunk();
+      face.classList.add('teeter');
+      await sleep(1500);
+      face.classList.remove('teeter');
+      stop();
+      ctx.dark(false);
       face.style.transform = 'translate(0,0) rotate(0deg)';
       face.classList.add('land');
       Sound.clunk();
@@ -671,7 +698,7 @@ window.Lottery = (() => {
         <div class="skin-tabs">${MACHINES.map((s) => `<button data-skin="${s.id}">${s.name}</button>`).join('')}<button id="lottoEdit" class="edit-btn" title="編輯這台機器的獎項和顆數">✏️ 獎項</button></div>
         <button class="icon-btn lotto-x" id="lottoClose" title="關閉（Esc）">✕</button>
       </div>
-      <div class="lotto-stage" id="lottoStage"><div class="spot"></div><div class="machine" id="lottoMachine"></div></div>
+      <div class="lotto-stage" id="lottoStage"><div class="fx-behind"></div><div class="spot"></div><div class="machine" id="lottoMachine"></div></div>
       <div class="lotto-info" id="lottoInfo"></div>
       <div class="lotto-actions"><button class="go" id="lottoGo">抽！</button></div>
       <div class="lotto-result hidden" id="lottoResult"></div>
@@ -685,6 +712,7 @@ window.Lottery = (() => {
     cur = { student, machine: mm, busy: false, root };
     root.querySelectorAll('[data-skin]').forEach((b) => b.onclick = () => {
       if (cur.busy) return;
+      FX.clear(root);
       L().skin = b.dataset.skin; W.save();
       cur.machine = b.dataset.skin;
       closeEditor(); mountSkin();
@@ -720,6 +748,12 @@ window.Lottery = (() => {
   function ctxFor() {
     return {
       dark: (on) => { if (cur) cur.root.classList.toggle('dark', on); },
+      wait: (ms) => {
+        if (!cur) return () => {};
+        const stop = FX.suspense(cur.root, ms);
+        cur.stopWait = stop;
+        return stop;
+      },
       busy: () => !cur || cur.busy,
       canStart: () => {
         if (!cur) return false;
@@ -734,6 +768,7 @@ window.Lottery = (() => {
         cur.busy = true;
         cur.root.classList.add('busy');
         cur.root.querySelector('#lottoResult').classList.add('hidden');
+        FX.clear(cur.root);
         return res;
       },
       finish: (res) => after(res)
@@ -793,6 +828,7 @@ window.Lottery = (() => {
     const root = cur.root;
     root.classList.add('busy');
     root.querySelector('#lottoResult').classList.add('hidden');
+    FX.clear(root);
     try { await SKIN_IMPL[cur.machine].play(root.querySelector('#lottoMachine'), res.item, ctxFor()); } catch (e) { /* 動畫出錯也不影響結果 */ }
     if (!cur || cur.root !== root) { W.renderAll(); return; }
     after(res);
@@ -800,6 +836,7 @@ window.Lottery = (() => {
 
   function after(res) {
     if (!cur) return;
+    if (cur.stopWait) { cur.stopWait(); cur.stopWait = null; }
     cur.root.classList.remove('busy', 'dark');
     W.renderAll();
     showResult(res);
@@ -826,8 +863,10 @@ window.Lottery = (() => {
         <button id="resOk">好！</button>
       </div>`;
     box.querySelector('#resOk').onclick = close;
-    box.querySelector('#resAgain').onclick = () => { box.classList.add('hidden'); mountSkin(); if (cur.machine !== 'garapon') go(); };
-    if (res.hit) { Sound.win(); confetti(res.bonus >= 3 || res.item.type === 'prize' || res.top ? 180 : 90); } else Sound.zero();
+    box.querySelector('#resAgain').onclick = () => { box.classList.add('hidden'); FX.clear(cur.root); mountSkin(); if (cur.machine !== 'garapon') go(); };
+    // 中獎專屬特效：最大獎＝金色背光＋大獎音效；其他中獎＝小獎特效
+    const tier = !res.hit ? 'miss' : (res.top ? 'big' : 'small');
+    FX.win(cur.root, tier, cur.root.querySelector('.fx-behind'));
     renderInfo();
     // 先讓學生看清楚抽到什麼，再跳出結果卡
     const root = cur.root;
@@ -860,7 +899,7 @@ window.Lottery = (() => {
       e.preventDefault();
       if (cur.busy) return true;
       const res = cur.root.querySelector('#lottoResult');
-      if (!res.classList.contains('hidden')) { res.classList.add('hidden'); mountSkin(); }
+      if (!res.classList.contains('hidden')) { res.classList.add('hidden'); FX.clear(cur.root); mountSkin(); }
       else go();
       return true;
     }

@@ -27,6 +27,7 @@
     <footer class="statusbar">
       <button class="mini-link" id="btnSound" title="音效開關"></button>
       <button class="mini-link" id="btnDisplay" title="放大成展示模式（最大化）"></button>
+      <button class="mini-link" id="btnZone" title="遊戲區開關"></button>
       <span class="grow"></span>
       <span id="summary"></span>
     </footer>
@@ -37,6 +38,7 @@
     <header class="d-head">
       <div class="d-title"><span id="dClass"></span><small id="dSummary"></small></div>
       <div class="drag-space"></div>
+      <button class="d-btn" id="dZone" title="遊戲區開關"></button>
       <button class="d-btn" id="dSound" title="音效開關"></button>
       <button class="d-btn" id="dUndo" title="復原上一步（Ctrl+Z）"></button>
       <button class="d-btn" id="dSettings" title="設定"></button>
@@ -66,7 +68,7 @@
       <button data-tab="score">加減分</button>
       <button data-tab="lottery">抽獎機</button>
       <button data-tab="reward">獎勵</button>
-      <button data-tab="slot">拉霸</button>
+      <button data-tab="slot">遊戲區</button>
       <button data-tab="sound">音效</button>
       <button data-tab="look">外觀</button>
       <button data-tab="stats">紀錄</button>
@@ -173,18 +175,28 @@
         </div>
       </div>
 
-      <!-- 拉霸 -->
+      <!-- 遊戲區 -->
       <div data-pane="slot" class="hidden">
         <div class="card">
-          <h3>吃角子老虎機（拉霸）</h3>
-          <label class="check"><input id="inSlotOn" type="checkbox"> 開啟拉霸（學生小卡和展示模式會出現 🎰）</label>
-          <p class="muted">學生要先選「不拉」或押哪一個：押越大，花的點數越多、中獎機率越低、獎品越大。拉之前會用圖示顯示「10 次大約中幾次」，讓學生自己取捨（機會成本）。</p>
+          <h3>🎪 遊戲區</h3>
+          <label class="check"><input id="inZoneOn" type="checkbox"> 開放遊戲區（上課時可以關掉，獎勵時間再打開）</label>
+          <label class="field inline">1 張入場券要用幾點換
+            <input id="inZonePrice" type="number" min="1" max="999" step="1" class="num-in">
+          </label>
+          <p class="muted">學生用點數換入場券（點數會扣掉），再用入場券玩吃角子老虎機或刮刮樂。換之前會提醒：這些點數也可以存起來換獎勵（機會成本）。左下角和展示模式右上角的 🎪 可以快速開關。</p>
         </div>
         <div class="card">
-          <h3>押注選項</h3>
+          <h3>🎰 吃角子老虎機的押注</h3>
           <div id="slotBetList"></div>
           <div class="btn-row"><button id="btnBetAdd">＋ 新增押注</button></div>
-          <p class="muted">每一列下面會算出「平均每拉一次會多或少幾點」，方便你設計：例如押大看起來獎品很大，其實平均會虧。</p>
+          <p class="muted">每一列下面會算出「平均每拉一次會多或少幾點」（已經扣掉入場券的價值 <span id="outPrice"></span> 點），方便你設計：例如押大看起來獎品很大，其實平均會虧。</p>
+        </div>
+        <div class="card">
+          <h3>🎫 刮刮樂的獎項</h3>
+          <p class="muted">1 張入場券刮一張。刮出 3 個一樣的圖案就中那個獎；沒中的卡不會出現 3 個一樣。</p>
+          <div id="scratchList"></div>
+          <div class="btn-row"><button id="btnScAdd">＋ 新增中獎圖案</button></div>
+          <p class="muted" id="scratchSum"></p>
         </div>
       </div>
 
@@ -268,7 +280,7 @@
         </div>
       </div>
 
-      <p class="version">學生加分小工具 v3.0.0</p>
+      <p class="version">學生加分小工具 v4.0.0</p>
     </div>
   </section>
 
@@ -289,8 +301,11 @@
 </div>
 <script src="sound.js"></script>
 <script src="avatar.js"></script>
+<script src="fx.js"></script>
 <script src="lottery.js"></script>
 <script src="slot.js"></script>
+<script src="scratch.js"></script>
+<script src="zone.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
