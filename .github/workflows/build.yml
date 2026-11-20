@@ -1,0 +1,45 @@
+name: 打包 Windows 程式
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安裝套件
+        run: npm install
+
+      - name: 打包成免安裝 exe
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: 保留打包結果
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScoreWidget
+          path: dist/*.exe
+
+      - name: 發佈到 Releases（方便下載）
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          TAG="v${VER}-build${{ github.run_number }}"
+          gh release create "$TAG" dist/*.exe \
+            --title "學生加分小工具 v${VER}（第 ${{ github.run_number }} 次打包）" \
+            --notes "下載下面的 ScoreWidget exe，放到 D 槽、隨身碟或雲端資料夾後雙擊執行。第一次開啟若出現藍色警告，請按「其他資訊」→「仍要執行」。" \
+            --latest

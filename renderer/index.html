@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>學生加分小工具</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- 一般模式 -->
+  <section id="full">
+    <header class="titlebar">
+      <button class="icon-btn" id="btnPin" title="置頂（點一下切換）"></button>
+      <select id="classSelect" title="切換班級"></select>
+      <div class="drag-space"></div>
+      <button class="icon-btn" id="btnUndo" title="復原上一步（Ctrl+Z）"></button>
+      <button class="icon-btn" id="btnMini" title="縮成迷你條"></button>
+      <button class="icon-btn" id="btnSettings" title="設定"></button>
+      <button class="icon-btn" id="btnMinimize" title="最小化"></button>
+      <button class="icon-btn danger" id="btnClose" title="關閉"></button>
+    </header>
+
+    <main id="list"></main>
+
+    <footer class="statusbar">
+      <span id="summary"></span>
+      <span class="hint">左鍵 +・右鍵 −</span>
+    </footer>
+  </section>
+
+  <!-- 迷你模式 -->
+  <section id="mini">
+    <div class="mini-handle" title="拖曳移動">⋮⋮</div>
+    <div id="miniChips"></div>
+    <button class="icon-btn" id="btnMiniPin" title="置頂（點一下切換）"></button>
+    <button class="icon-btn" id="btnExpand" title="展開"></button>
+  </section>
+
+  <!-- 設定 -->
+  <section id="settings" class="hidden">
+    <header class="titlebar">
+      <button class="icon-btn" id="btnBack" title="返回"></button>
+      <span class="title-text">設定</span>
+      <div class="drag-space"></div>
+    </header>
+    <div class="settings-body">
+
+      <div class="card">
+        <h3>班級／節次</h3>
+        <label class="field">名稱
+          <input id="inClassName" type="text" maxlength="20">
+        </label>
+        <div class="btn-row">
+          <button id="btnAddClass">＋ 新增班級</button>
+          <button id="btnDelClass" class="warn">刪除這個班級</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>學生名單</h3>
+        <div id="studentEditList"></div>
+        <label class="field">貼上名單（一行一個名字，可以直接從 Excel 複製一整欄）
+          <textarea id="inPaste" rows="4" placeholder="王小明&#10;李小華&#10;陳小美"></textarea>
+        </label>
+        <div class="btn-row">
+          <button id="btnPaste" class="primary">加入名單</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>加減分</h3>
+        <label class="field inline">每次加減
+          <select id="inStep">
+            <option value="1">1 分</option>
+            <option value="2">2 分</option>
+            <option value="3">3 分</option>
+            <option value="5">5 分</option>
+          </select>
+        </label>
+        <label class="field inline">排列方式
+          <select id="inSort">
+            <option value="list">依名單順序</option>
+            <option value="score">分數高到低</option>
+          </select>
+        </label>
+        <label class="check"><input id="inNoNeg" type="checkbox"> 分數最低到 0，不會變成負的</label>
+        <div class="btn-row">
+          <button id="btnResetScores" class="warn">這個班級分數全部歸零</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>外觀</h3>
+        <label class="field">透明度 <b id="outOpacity"></b>
+          <input id="inOpacity" type="range" min="30" max="100" step="5">
+        </label>
+        <label class="field">字體大小 <b id="outZoom"></b>
+          <input id="inZoom" type="range" min="80" max="160" step="10">
+        </label>
+      </div>
+
+      <div class="card">
+        <h3>資料</h3>
+        <p class="muted">每次加減分都會自動存檔，每天也會自動備份一份。整個資料夾可以放在 D 槽、隨身碟或雲端同步資料夾。</p>
+        <p class="path" id="dataPath"></p>
+        <div class="btn-row">
+          <button id="btnOpenDir">開啟資料夾</button>
+        </div>
+      </div>
+
+      <p class="version">學生加分小工具 v1.0.0</p>
+    </div>
+  </section>
+
+  <div id="toast" class="toast hidden"><span id="toastText"></span><button id="toastUndo">復原</button></div>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <p id="modalText"></p>
+      <div class="btn-row end">
+        <button id="modalCancel">取消</button>
+        <button id="modalOk" class="warn-solid">確定</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
