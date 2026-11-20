@@ -2,14 +2,14 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' file: data: blob:; media-src 'self' file: data: blob:">
 <title>學生加分小工具</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
 
-  <!-- 一般模式 -->
+  <!-- 老師模式（一般視窗） -->
   <section id="full">
     <header class="titlebar">
       <button class="icon-btn" id="btnPin" title="置頂（點一下切換）"></button>
@@ -25,9 +25,25 @@
     <main id="list"></main>
 
     <footer class="statusbar">
+      <button class="mini-link" id="btnSound" title="音效開關"></button>
+      <button class="mini-link" id="btnDisplay" title="放大成展示模式（最大化）"></button>
+      <span class="grow"></span>
       <span id="summary"></span>
-      <span class="hint">左鍵 +・右鍵 −</span>
     </footer>
+  </section>
+
+  <!-- 展示模式（視窗最大化時） -->
+  <section id="display">
+    <header class="d-head">
+      <div class="d-title"><span id="dClass"></span><small id="dSummary"></small></div>
+      <div class="drag-space"></div>
+      <button class="d-btn" id="dSound" title="音效開關"></button>
+      <button class="d-btn" id="dUndo" title="復原上一步（Ctrl+Z）"></button>
+      <button class="d-btn" id="dSettings" title="設定"></button>
+      <button class="d-btn" id="dExit" title="回到小視窗"></button>
+      <button class="d-btn danger" id="dClose" title="關閉"></button>
+    </header>
+    <main id="grid"></main>
   </section>
 
   <!-- 迷你模式 -->
@@ -41,80 +57,218 @@
   <!-- 設定 -->
   <section id="settings" class="hidden">
     <header class="titlebar">
-      <button class="icon-btn" id="btnBack" title="返回"></button>
+      <button class="icon-btn" id="btnBack" title="返回（Esc）"></button>
       <span class="title-text">設定</span>
       <div class="drag-space"></div>
     </header>
+    <nav class="tabs" id="tabs">
+      <button data-tab="roster" class="sel">名單</button>
+      <button data-tab="score">加減分</button>
+      <button data-tab="lottery">抽獎機</button>
+      <button data-tab="reward">獎勵</button>
+      <button data-tab="sound">音效</button>
+      <button data-tab="look">外觀</button>
+      <button data-tab="stats">紀錄</button>
+    </nav>
     <div class="settings-body">
 
-      <div class="card">
-        <h3>班級／節次</h3>
-        <label class="field">名稱
-          <input id="inClassName" type="text" maxlength="20">
-        </label>
-        <div class="btn-row">
-          <button id="btnAddClass">＋ 新增班級</button>
-          <button id="btnDelClass" class="warn">刪除這個班級</button>
+      <!-- 名單 -->
+      <div data-pane="roster">
+        <div class="card">
+          <h3>班級／節次</h3>
+          <label class="field">名稱
+            <input id="inClassName" type="text" maxlength="20">
+          </label>
+          <div class="btn-row">
+            <button id="btnAddClass">＋ 新增班級</button>
+            <button id="btnDelClass" class="warn">刪除這個班級</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>學生名單</h3>
+          <p class="muted">點頭貼可以換照片或卡通頭像。</p>
+          <div id="studentEditList"></div>
+          <label class="field">貼上名單（一行一個名字，可以直接從 Excel 複製一整欄）
+            <textarea id="inPaste" rows="4" placeholder="王小明&#10;李小華&#10;陳小美"></textarea>
+          </label>
+          <div class="btn-row"><button id="btnPaste" class="primary">加入名單</button></div>
         </div>
       </div>
 
-      <div class="card">
-        <h3>學生名單</h3>
-        <div id="studentEditList"></div>
-        <label class="field">貼上名單（一行一個名字，可以直接從 Excel 複製一整欄）
-          <textarea id="inPaste" rows="4" placeholder="王小明&#10;李小華&#10;陳小美"></textarea>
-        </label>
-        <div class="btn-row">
-          <button id="btnPaste" class="primary">加入名單</button>
+      <!-- 加減分 -->
+      <div data-pane="score" class="hidden">
+        <div class="card">
+          <h3>加減分</h3>
+          <label class="field inline">每次加減
+            <select id="inStep">
+              <option value="1">1 分</option><option value="2">2 分</option>
+              <option value="3">3 分</option><option value="5">5 分</option>
+            </select>
+          </label>
+          <label class="field inline">排列方式
+            <select id="inSort">
+              <option value="list">依名單順序</option>
+              <option value="score">分數高到低</option>
+            </select>
+          </label>
+          <label class="check"><input id="inNoNeg" type="checkbox"> 分數最低到 0，不會變成負的</label>
+          <div class="btn-row"><button id="btnResetScores" class="warn">這個班級分數全部歸零</button></div>
         </div>
       </div>
 
-      <div class="card">
-        <h3>加減分</h3>
-        <label class="field inline">每次加減
-          <select id="inStep">
-            <option value="1">1 分</option>
-            <option value="2">2 分</option>
-            <option value="3">3 分</option>
-            <option value="5">5 分</option>
-          </select>
-        </label>
-        <label class="field inline">排列方式
-          <select id="inSort">
-            <option value="list">依名單順序</option>
-            <option value="score">分數高到低</option>
-          </select>
-        </label>
-        <label class="check"><input id="inNoNeg" type="checkbox"> 分數最低到 0，不會變成負的</label>
-        <div class="btn-row">
-          <button id="btnResetScores" class="warn">這個班級分數全部歸零</button>
+      <!-- 抽獎機 -->
+      <div data-pane="lottery" class="hidden">
+        <div class="card">
+          <h3>什麼時候可以抽</h3>
+          <label class="check"><input type="radio" name="ticketMode" value="free"> 老師按 🎰 就能抽</label>
+          <label class="check"><input type="radio" name="ticketMode" value="ticket"> 要有抽獎券才能抽（達成條件才能抽）</label>
+          <label class="field inline" id="rowTicketEvery">每得到幾分送 1 張抽獎券
+            <input id="inTicketEvery" type="number" min="1" max="100" step="1" class="num-in">
+          </label>
+          <p class="muted" id="ticketHint">老師也可以在學生小卡上直接送抽獎券（例如完成任務時）。</p>
+          <label class="check"><input id="inBaseOne" type="checkbox"> 抽獎時先給好行為基本分 +1，再看加碼</label>
+        </div>
+
+        <div class="card">
+          <h3>獎池（放幾顆球決定機率）</h3>
+          <div class="pool-bar">
+            <select id="inPool"></select>
+            <button id="btnPoolAdd" title="新增獎池">新增</button>
+            <button id="btnPoolCopy" title="複製這個獎池">複製</button>
+            <button id="btnPoolDel" class="warn" title="刪除這個獎池">刪除</button>
+          </div>
+          <label class="field">獎池名稱（例如：建立期、穩定期）
+            <input id="inPoolName" type="text" maxlength="12">
+          </label>
+          <div class="item-head"><span>顏色</span><span>種類</span><span>內容</span><span>顆數</span><span>機率</span><span></span></div>
+          <div id="itemList"></div>
+          <div class="btn-row"><button id="btnItemAdd">＋ 新增一種球</button></div>
+          <p class="muted" id="poolSummary"></p>
+        </div>
+
+        <div class="card">
+          <h3>抽出來的球要放回去嗎</h3>
+          <label class="check"><input type="radio" name="replace" value="no"> 不放回：抽完一輪再重新裝滿（天生有保底）</label>
+          <label class="check"><input type="radio" name="replace" value="yes"> 放回：每次機率都一樣</label>
+          <div id="remainBox" class="remain-box"></div>
+        </div>
+
+        <div class="card">
+          <h3>保底</h3>
+          <label class="check"><input id="inPityOn" type="checkbox"> 開啟保底</label>
+          <label class="field inline">連續幾次沒加碼，下一次一定中
+            <input id="inPityN" type="number" min="1" max="20" step="1" class="num-in">
+          </label>
+        </div>
+
+        <div class="card">
+          <h3>抽獎機外觀</h3>
+          <label class="field inline">預設外觀
+            <select id="inSkin"></select>
+          </label>
+          <p class="muted">抽獎畫面上方也可以隨時切換外觀，機率不會改變。</p>
         </div>
       </div>
 
-      <div class="card">
-        <h3>外觀</h3>
-        <label class="field">透明度 <b id="outOpacity"></b>
-          <input id="inOpacity" type="range" min="30" max="100" step="5">
-        </label>
-        <label class="field">字體大小 <b id="outZoom"></b>
-          <input id="inZoom" type="range" min="80" max="160" step="10">
-        </label>
-      </div>
-
-      <div class="card">
-        <h3>資料</h3>
-        <p class="muted">每次加減分都會自動存檔，每天也會自動備份一份。整個資料夾可以放在 D 槽、隨身碟或雲端同步資料夾。</p>
-        <p class="path" id="dataPath"></p>
-        <div class="btn-row">
-          <button id="btnOpenDir">開啟資料夾</button>
+      <!-- 獎勵 -->
+      <div data-pane="reward" class="hidden">
+        <div class="card">
+          <h3>點數兌換獎勵</h3>
+          <p class="muted">學生卡片會顯示離下一個獎勵還差幾點；兌換時會扣掉點數。</p>
+          <div class="reward-head"><span>圖示</span><span>獎勵名稱</span><span>需要點數</span><span></span></div>
+          <div id="rewardList"></div>
+          <div class="btn-row"><button id="btnRewardAdd">＋ 新增獎勵</button></div>
         </div>
       </div>
 
-      <p class="version">學生加分小工具 v1.0.0</p>
+      <!-- 音效 -->
+      <div data-pane="sound" class="hidden">
+        <div class="card">
+          <h3>音效</h3>
+          <label class="check"><input id="inSoundOn" type="checkbox"> 開啟音效</label>
+          <label class="field">音量 <b id="outVolume"></b>
+            <input id="inVolume" type="range" min="0" max="100" step="5">
+          </label>
+        </div>
+        <div class="card">
+          <h3>加分音效</h3>
+          <p class="muted" id="plusSoundName"></p>
+          <div class="btn-row">
+            <button data-test="plus">▶ 試聽</button>
+            <button data-pick="plus">換成自己的音檔…</button>
+            <button data-reset="plus">用內建音效</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>扣分音效</h3>
+          <p class="muted" id="minusSoundName"></p>
+          <div class="btn-row">
+            <button data-test="minus">▶ 試聽</button>
+            <button data-pick="minus">換成自己的音檔…</button>
+            <button data-reset="minus">用內建音效</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>其他音效</h3>
+          <div class="btn-row">
+            <button data-test="win">▶ 抽中</button>
+            <button data-test="zero">▶ 沒加碼</button>
+            <button data-test="fanfare">▶ 兌換獎勵</button>
+            <button data-test="ticket">▶ 拿到抽獎券</button>
+          </div>
+        </div>
+        <input id="inSoundFile" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a" class="hidden">
+      </div>
+
+      <!-- 外觀 -->
+      <div data-pane="look" class="hidden">
+        <div class="card">
+          <h3>外觀</h3>
+          <label class="field">透明度 <b id="outOpacity"></b>
+            <input id="inOpacity" type="range" min="30" max="100" step="5">
+          </label>
+          <label class="field">字體大小 <b id="outZoom"></b>
+            <input id="inZoom" type="range" min="80" max="160" step="10">
+          </label>
+          <p class="muted">把視窗最大化（或按左下角「展示模式」）會自動變成大卡片的展示畫面，適合投影。</p>
+        </div>
+        <div class="card">
+          <h3>資料</h3>
+          <p class="muted">每次加減分都會自動存檔，每天也會自動備份一份。整個資料夾可以放在 D 槽、隨身碟或雲端同步資料夾。</p>
+          <p class="path" id="dataPath"></p>
+          <div class="btn-row"><button id="btnOpenDir">開啟資料夾</button></div>
+        </div>
+      </div>
+
+      <!-- 紀錄 -->
+      <div data-pane="stats" class="hidden">
+        <div class="card">
+          <h3>紀錄統計</h3>
+          <label class="field inline">期間
+            <select id="inRange">
+              <option value="today">今天</option>
+              <option value="week">最近 7 天</option>
+              <option value="month">最近 30 天</option>
+              <option value="all">全部</option>
+            </select>
+          </label>
+          <div class="table-wrap"><table class="stats" id="statsTable"></table></div>
+          <p class="muted">「平均幾次一加碼」可以當作不定量增強的實際比率，給 IEP 或行為紀錄參考。</p>
+        </div>
+        <div class="card">
+          <h3>最近的紀錄</h3>
+          <div id="logList" class="log-list"></div>
+        </div>
+      </div>
+
+      <p class="version">學生加分小工具 v2.0.0</p>
     </div>
   </section>
 
   <div id="toast" class="toast hidden"><span id="toastText"></span><button id="toastUndo">復原</button></div>
+  <div id="banner" class="banner hidden"></div>
+
+  <div id="sheet" class="modal hidden"><div class="modal-box sheet-box" id="sheetBox"></div></div>
 
   <div id="modal" class="modal hidden">
     <div class="modal-box">
@@ -126,6 +280,9 @@
     </div>
   </div>
 </div>
+<script src="sound.js"></script>
+<script src="avatar.js"></script>
+<script src="lottery.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

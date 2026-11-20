@@ -2,6 +2,7 @@
 const { app, BrowserWindow, ipcMain, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 
 // ---------- 資料存放位置 ----------
 // 免安裝版（portable）：資料放在 exe 旁邊的「加分小工具資料」資料夾，
@@ -128,6 +129,10 @@ function createWindow() {
   win.on('moved', track);
   win.on('resized', track);
   win.on('closed', () => { win = null; });
+  // 最大化時通知畫面切換成展示模式
+  const sendMax = () => { if (win) win.webContents.send('win:maximized', win.isMaximized()); };
+  win.on('maximize', sendMax);
+  win.on('unmaximize', sendMax);
 }
 
 // 只允許開一個，避免兩個視窗同時寫同一份資料
@@ -155,7 +160,34 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 // ---------- 跟畫面溝通 ----------
-ipcMain.handle('data:load', () => ({ data: loadData(), dataDir: DATA_DIR, pinned: winState.pinned, mini: winState.mini }));
+ipcMain.handle('data:load', () => ({
+  data: loadData(),
+  dataDir: DATA_DIR,
+  dataUrl: pathToFileURL(DATA_DIR).href.replace(/\/?$/, '/'),
+  pinned: winState.pinned,
+  mini: winState.mini
+}));
+
+// 頭貼、音效檔只能存在資料夾裡的 avatars／sounds，避免寫到別的地方
+const SAFE_FILE = /^(avatars|sounds)\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp|mp3|wav|ogg|m4a)$/;
+ipcMain.handle('file:save', (_e, rel, bytes) => {
+  if (!SAFE_FILE.test(rel)) throw new Error('bad path');
+  const full = path.join(DATA_DIR, rel);
+  fs.mkdirSync(path.dirname(full), { recursive: true });
+  fs.writeFileSync(full, Buffer.from(bytes));
+  return rel;
+});
+ipcMain.handle('file:delete', (_e, rel) => {
+  if (!SAFE_FILE.test(rel)) return false;
+  try { fs.unlinkSync(path.join(DATA_DIR, rel)); } catch (e) { /* 已經不在了 */ }
+  return true;
+});
+
+ipcMain.handle('win:toggleMax', () => {
+  if (!win || winState.mini) return false;
+  if (win.isMaximized()) win.unmaximize(); else win.maximize();
+  return win.isMaximized();
+});
 
 ipcMain.handle('data:save', (_e, data) => {
   writeJSONSafe(DATA_FILE, data);
