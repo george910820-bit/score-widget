@@ -102,7 +102,7 @@ window.Research = (() => {
     rows = rows || R().log;
     const by = new Map();
     const S = (r) => {
-      if (!by.has(r.sid)) by.set(r.sid, { name: r.name, visits: 0, noPlay: 0, picks: 0, luck: 0, buys: 0, ws: [0, 0], ls: [0, 0], slotBet: [], keep: 0, hiloCash: [], hiloBust: 0, raceP: [], clawFail: 0, clawAgain: 0, saved: 0, claimed: 0, early: 0, ev: [], played: false, lastOut: null });
+      if (!by.has(r.sid)) by.set(r.sid, { name: r.name, visits: 0, noPlay: 0, picks: 0, luck: 0, buys: 0, ws: [0, 0], ls: [0, 0], slotBet: [], keep: 0, hiloCash: [], hiloBust: 0, raceP: [], racePlace: 0, clawFail: 0, clawAgain: 0, saved: 0, claimed: 0, early: 0, ev: [], played: false, lastOut: null });
       return by.get(r.sid);
     };
     rows.forEach((r) => {
@@ -114,7 +114,7 @@ window.Research = (() => {
       else if (r.ev === '決定') {
         if (r.evp !== undefined && r.evp !== '' && r.choice !== '不拉' && r.choice !== '收手') x.ev.push(Number(r.evp));
         if (r.game === '吃角子老虎機') { if (r.choice === '不拉') x.keep++; else x.slotBet.push(Number(r.cost) / price()); }
-        if (r.game === '小動物賽跑' && r.p !== undefined) x.raceP.push(Number(r.p));
+        if (r.game === '小動物賽跑' && r.p !== undefined) { x.raceP.push(Number(r.p)); if (String(r.choice).includes('位置')) x.racePlace++; }
         if (r.game === '猜大小' && r.choice === '收手') x.hiloCash.push(Number(r.round) || 0);
         if (r.game === '夾娃娃機' && Number(r.sunk) >= 1) x.clawAgain++;
         if (r.choice !== '不拉' && r.choice !== '收手' && r.game) x.played = true;
@@ -142,7 +142,7 @@ window.Research = (() => {
       loseShift: x.ls[1] ? `${pct(x.ls[0], x.ls[1])}（${x.ls[1]}）` : '—',
       slotBet: avg(x.slotBet), keep: x.keep,
       hiloCash: avg(x.hiloCash), hiloBust: x.hiloBust,
-      raceP: x.raceP.length ? `${avg(x.raceP)}%` : '—',
+      raceP: x.raceP.length ? `${avg(x.raceP)}%／位置 ${pct(x.racePlace, x.raceP.length)}` : '—',
       clawAgain: x.clawFail ? `${pct(x.clawAgain, x.clawFail)}` : '—',
       save: `${x.saved}／${x.claimed}／${x.early}`,
       ev: avg(x.ev)

@@ -81,7 +81,7 @@ window.Arcade = (() => {
     W.save();
     W.renderAll();
   }
-  const NOTE = { slot: '落在第幾格(0起)', tries: '這次連玩第幾次', rounds: '猜對幾關', lost: '輸掉的獎金', closed: '中途關掉', racer: '押', winner: '贏的是', hits: '打中', mistakes: '翻錯', pairs: '幾對', flips: '按擋板次數' };
+  const NOTE = { slot: '落在第幾格(0起)', tries: '這次連玩第幾次', rounds: '猜對幾關', lost: '輸掉的獎金', closed: '中途關掉', racer: '押', winner: '贏的是', bet: '押法', place: '押的那隻跑第幾名', hits: '打中', mistakes: '翻錯', pairs: '幾對', flips: '按擋板次數' };
   const ticketWorth = (n) => `${n} 張入場券（值 ${n * price()} 點）`;
 
   // =====================================================================
@@ -571,62 +571,95 @@ window.Arcade = (() => {
   // 小動物賽跑：全班一起下注，熱門的容易贏但獎小，冷門的難贏但獎大
   // =====================================================================
   const RACERS = [
-    { e: '🐇', name: '兔子', p: 35, x: 2 },
-    { e: '🐕', name: '小狗', p: 25, x: 3 },
-    { e: '🐈', name: '小貓', p: 20, x: 4 },
-    { e: '🐤', name: '小雞', p: 12, x: 6 },
-    { e: '🐢', name: '烏龜', p: 8, x: 10 }
+    { e: '🐇', name: '兔子', p: 35, x: 2, px: 1.1 },
+    { e: '🐕', name: '小狗', p: 25, x: 3, px: 1.2 },
+    { e: '🐈', name: '小貓', p: 20, x: 4, px: 1.3 },
+    { e: '🐤', name: '小雞', p: 12, x: 6, px: 1.8 },
+    { e: '🐢', name: '烏龜', p: 8, x: 10, px: 2.5 }
   ];
+  // 跑進前 3 名的機率（照勝率一名一名抽出來）
+  const PLACE_P = (() => {
+    const p = RACERS.map((r) => r.p / 100), top = p.map(() => 0);
+    for (let a = 0; a < p.length; a++) for (let b = 0; b < p.length; b++) for (let c = 0; c < p.length; c++) {
+      if (a === b || b === c || a === c) continue;
+      const pr = p[a] * p[b] / (1 - p[a]) * p[c] / (1 - p[a] - p[b]);
+      top[a] += pr; top[b] += pr; top[c] += pr;
+    }
+    return top.map((v) => Math.round(v * 100));
+  })();
+  const BET = { win: '獨贏', place: '位置' };
+  const payOf = (i, type) => Math.round((type === 'place' ? RACERS[i].px : RACERS[i].x) * price());
   function race(student, back) {
     const sh = shell({ student, icon: '🏁', title: '小動物賽跑', bg: '#3d5a1f', back });
-    const bets = {}; // studentId → racer index
-    if ((student.zoneTickets || 0) > 0) bets[student.id] = null;
+    const bets = {}; // studentId → { r: 第幾隻, type: 'win' | 'place' }
+    const mode = {}; // studentId → 正在選的押法
     function renderBets() {
       const list = W.cls().students;
       sh.stage.innerHTML = `
         <div class="rc">
-          <div class="rc-odds">${RACERS.map((r) => `<div class="rc-o"><span class="e">${r.e}</span><b>${r.name}</b><span class="pi">${Array.from({ length: 10 }, (_, i) => `<i class="${i < Math.round(r.p / 10) ? 'on' : ''}"></i>`).join('')}</span><span>大約 ${r.p}%</span><span class="pay">贏了拿 ${r.x * price()} 點</span></div>`).join('')}</div>
+          <div class="rc-odds">${RACERS.map((r, i) => `<div class="rc-o"><span class="e">${r.e}</span><b>${r.name}</b>
+            <span class="pi">${Array.from({ length: 10 }, (_, k) => `<i class="${k < Math.round(r.p / 10) ? 'on' : ''}"></i>`).join('')}</span>
+            <span class="od"><em>獨贏</em> 第 1 名・約 ${r.p}%<b class="pay">拿 ${payOf(i, 'win')} 點</b></span>
+            <span class="od pl"><em>位置</em> 前 3 名・約 ${PLACE_P[i]}%<b class="pay">拿 ${payOf(i, 'place')} 點</b></span></div>`).join('')}</div>
           <div class="rc-bets">${list.map((s) => {
-            const t = s.zoneTickets || 0, pick = bets[s.id];
+            const t = s.zoneTickets || 0, b = bets[s.id], m = (b && b.type) || mode[s.id] || 'win';
             return `<div class="rb-row${t ? '' : ' no'}"><span class="nm">${Avatar.html(s, 26)} ${esc(s.name)}</span><span class="tk">🎟${t}</span>
-              <span class="picks">${RACERS.map((r, i) => `<button data-s="${s.id}" data-r="${i}" class="${pick === i ? 'sel' : ''}"${t ? '' : ' disabled'}>${r.e}</button>`).join('')}</span></div>`;
+              <span class="rb-type">${Object.entries(BET).map(([k, v]) => `<button data-ts="${s.id}" data-t="${k}" class="${m === k ? 'sel' : ''}"${t ? '' : ' disabled'}>${v}</button>`).join('')}</span>
+              <span class="picks">${RACERS.map((r, i) => `<button data-s="${s.id}" data-r="${i}" class="${b && b.r === i ? 'sel' : ''}"${t ? '' : ' disabled'}>${r.e}</button>`).join('')}</span></div>`;
           }).join('')}</div>
         </div>`;
-      sh.stage.querySelectorAll('[data-r]').forEach((b) => b.onclick = () => {
-        const sid = b.dataset.s, r = Number(b.dataset.r);
-        bets[sid] = bets[sid] === r ? null : r;
+      sh.stage.querySelectorAll('[data-t]').forEach((el) => el.onclick = () => {
+        const sid = el.dataset.ts; mode[sid] = el.dataset.t;
+        if (bets[sid]) bets[sid].type = el.dataset.t;
         Sound.tick(); renderBets();
       });
-      const n = Object.values(bets).filter((v) => v !== null && v !== undefined).length;
-      sh.info(`每個人可以押 1 隻（用 1 張入場券）。已經有 ${n} 人押好了。`);
+      sh.stage.querySelectorAll('[data-r]').forEach((el) => el.onclick = () => {
+        const sid = el.dataset.s, r = Number(el.dataset.r);
+        bets[sid] = bets[sid] && bets[sid].r === r ? null : { r, type: mode[sid] || 'win' };
+        Sound.tick(); renderBets();
+      });
+      const n = Object.values(bets).filter(Boolean).length;
+      sh.info(`每個人押 1 隻（用 1 張入場券）：「獨贏」要跑第 1 名，「位置」跑進前 3 名就算中。已經有 ${n} 人押好了。`);
       sh.actions(`<button class="go${n ? '' : ' off'}" id="rcGo">開跑！</button>`).querySelector('#rcGo').onclick = run;
     }
     async function run() {
       if (sh.busy) return;
       const list = W.cls().students;
-      const entries = list.filter((s) => bets[s.id] !== null && bets[s.id] !== undefined && (s.zoneTickets || 0) > 0);
+      const entries = list.filter((s) => bets[s.id] && (s.zoneTickets || 0) > 0);
       if (!entries.length) { W.toast('還沒有人押注', false); return; }
       W.snapshot('小動物賽跑');
       entries.forEach((s) => {
         s.zoneTickets -= 1;
-        const rc = RACERS[bets[s.id]];
-        Research.decide(s, '小動物賽跑', `押${rc.name}`, { p: rc.p, prize: rc.x * price(), cost: price(), note: s.id === student.id ? '開這一場的人' : '一起押的同學' });
+        const b = bets[s.id], rc = RACERS[b.r];
+        Research.decide(s, '小動物賽跑', `押${rc.name}（${BET[b.type]}）`, {
+          p: b.type === 'place' ? PLACE_P[b.r] : rc.p, prize: payOf(b.r, b.type), cost: price(),
+          note: `${s.id === student.id ? '開這一場的人' : '一起押的同學'}；押法：${BET[b.type]}`
+        });
       });
       W.save();
       sh.setBusy(true); sh.sub();
-      // 先決定誰贏（照機率），再演出比賽
-      let r = Math.random() * 100, win = RACERS.length - 1;
-      for (let i = 0; i < RACERS.length; i++) { r -= RACERS[i].p; if (r < 0) { win = i; break; } }
-      sh.stage.innerHTML = `<div class="rc-track">${RACERS.map((rc, i) => `<div class="lane"><span class="ln">${i + 1}</span><div class="runner" id="rn${i}">${rc.e}</div><div class="finish"></div><div class="backers">${entries.filter((s) => bets[s.id] === i).map((s) => Avatar.html(s, 22)).join('')}</div></div>`).join('')}</div><div class="rc-comment" id="rcCmt">預備…</div>`;
+      // 先照勝率一名一名抽出名次，再演出比賽
+      const order = [], left = RACERS.map((_, i) => i);
+      while (left.length) {
+        const tot = left.reduce((a, i) => a + RACERS[i].p, 0);
+        let r = Math.random() * tot, pick = left[left.length - 1];
+        for (const i of left) { r -= RACERS[i].p; if (r < 0) { pick = i; break; } }
+        order.push(pick); left.splice(left.indexOf(pick), 1);
+      }
+      const win = order[0], podium = order.slice(0, 3);
+      const backers = (i) => entries.filter((s) => bets[s.id].r === i).map((s) => `<span class="bk ${bets[s.id].type}">${Avatar.html(s, 22)}</span>`).join('');
+      sh.stage.innerHTML = `<div class="rc-track">${RACERS.map((rc, i) => `<div class="lane"><span class="ln">${i + 1}</span><div class="runner" id="rn${i}">${rc.e}</div><div class="finish"></div><div class="rank" id="rk${i}"></div><div class="backers">${backers(i)}</div></div>`).join('')}</div><div class="rc-comment" id="rcCmt">預備…</div><div class="rc-legend">頭像有金框＝押「位置」（前 3 名就中）</div>`;
       sh.actions('');
       sh.info('');
       const cmt = sh.stage.querySelector('#rcCmt');
       for (const w of ['3', '2', '1', '跑！']) { cmt.textContent = w; Sound.tick(); await sleep(450); }
       const T = 7000;
-      const finish = RACERS.map((_, i) => (i === win ? T : T + 250 + Math.random() * 1600));
+      const finish = RACERS.map(() => 0);
+      order.forEach((i, k) => { finish[i] = k === 0 ? T : finish[order[k - 1]] + 180 + Math.random() * (k < 3 ? 420 : 900); });
       const phase = RACERS.map(() => Math.random() * 6);
       const t0 = performance.now();
       let leader = -1, lastStep = 0;
+      const shown = {};
       const stop = FX.suspense(sh.root, T);
       await new Promise((res) => {
         const frame = (now) => {
@@ -637,11 +670,19 @@ window.Arcade = (() => {
             const wob = 0.06 * Math.sin(t / 420 + phase[i]) * Math.sin(Math.min(1, t / finish[i]) * Math.PI);
             return Math.max(0, Math.min(1, base + wob));
           });
-          pos.forEach((p, i) => { const el = sh.stage.querySelector('#rn' + i); if (el) el.style.left = `calc(${(p * 86).toFixed(2)}% + 24px)`; });
+          pos.forEach((p, i) => {
+            const el = sh.stage.querySelector('#rn' + i); if (el) el.style.left = `calc(${(p * 78).toFixed(2)}% + 24px)`;
+            if (t >= finish[i] && !shown[i]) {
+              shown[i] = true;
+              const k = order.indexOf(i), rk = sh.stage.querySelector('#rk' + i);
+              if (rk) { rk.textContent = ['🥇', '🥈', '🥉', '4', '5'][k]; rk.classList.add('on'); }
+              if (k < 3) Sound.bell();
+            }
+          });
           const lead = pos.indexOf(Math.max(...pos));
-          if (lead !== leader && t > 600) { leader = lead; cmt.textContent = `${RACERS[lead].e} ${RACERS[lead].name}領先！`; Sound.tick(); }
-          if (now - lastStep > 220) { Sound.rattle(); lastStep = now; }
-          if (t < T + 400) requestAnimationFrame(frame); else res();
+          if (lead !== leader && t > 600 && t < T) { leader = lead; cmt.textContent = `${RACERS[lead].e} ${RACERS[lead].name}領先！`; Sound.tick(); }
+          if (now - lastStep > 220 && t < T) { Sound.rattle(); lastStep = now; }
+          if (t < Math.max(...finish) + 300) requestAnimationFrame(frame); else res();
         };
         requestAnimationFrame(frame);
       });
@@ -649,19 +690,23 @@ window.Arcade = (() => {
       if (sh.closed) return;
       cmt.textContent = `🏆 ${RACERS[win].e} ${RACERS[win].name}贏了！`;
       const winners = [];
+      let bigHit = false;
       entries.forEach((s) => {
-        const hit = bets[s.id] === win;
-        const prize = hit ? RACERS[win].x * price() : 0;
-        record(s, '小動物賽跑', 1, prize, { racer: RACERS[bets[s.id]].name, winner: RACERS[win].name });
-        if (hit) winners.push(`${esc(s.name)} +${prize}`);
+        const b = bets[s.id];
+        const hit = b.type === 'place' ? podium.includes(b.r) : b.r === win;
+        const prize = hit ? payOf(b.r, b.type) : 0;
+        if (hit && b.type === 'win' && RACERS[b.r].x >= 6) bigHit = true;
+        record(s, '小動物賽跑', 1, prize, { bet: BET[b.type], racer: RACERS[b.r].name, winner: RACERS[win].name, place: order.indexOf(b.r) + 1 });
+        if (hit) winners.push(`${esc(s.name)}（${BET[b.type]}）+${prize}`);
       });
-      FX.win(sh.root, winners.length ? (RACERS[win].x >= 6 ? 'big' : 'small') : 'miss', sh.root.querySelector('.fx-behind'));
+      FX.win(sh.root, winners.length ? (bigHit ? 'big' : 'small') : 'miss', sh.root.querySelector('.fx-behind'));
       sh.sub();
       await sleep(900);
       sh.setBusy(false);
       sh.result(`${RACERS[win].e} ${RACERS[win].name}贏了！`, winners.length > 0, [
+        `名次：🥇${RACERS[podium[0]].e} 🥈${RACERS[podium[1]].e} 🥉${RACERS[podium[2]].e}`,
         winners.length ? `押中的人：${winners.join('、')}` : '這次沒有人押中',
-        `${RACERS[win].name}的勝率大約 ${RACERS[win].p}%，${RACERS[win].x >= 6 ? '是冷門爆冷！' : '是熱門之一'}`
+        `${RACERS[win].name}拿第 1 名的機會大約 ${RACERS[win].p}%，${RACERS[win].x >= 6 ? '是冷門爆冷！' : '是熱門之一'}`
       ], [
         { label: '再比一場', primary: true, onClick: () => { Object.keys(bets).forEach((k) => { bets[k] = null; }); renderBets(); } },
         { label: '回遊樂場', onClick: () => sh.close() }

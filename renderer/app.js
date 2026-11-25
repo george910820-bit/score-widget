@@ -782,7 +782,7 @@
     const rows = Research.rows().filter((r) => r.cls === c.name || c.students.some((s) => s.id === r.sid));
     $('researchCount').textContent = `目前一共 ${Research.count()} 筆（這個班 ${rows.length} 筆）`;
     const sum = Research.summary(rows);
-    $('researchTable').innerHTML = `<thead><tr><th>學生</th><th>進場</th><th>進場沒玩</th><th>換券</th><th>選遊戲</th><th>選機率遊戲</th><th>贏了留下</th><th>輸了換掉</th><th>拉霸平均押幾張</th><th>不拉</th><th>猜大小平均第幾關收手</th><th>猜大小爆掉</th><th>賽跑押的勝率</th><th>夾娃娃失敗後再夾</th><th>存錢 存／到期／提早</th><th>選項平均期望值</th></tr></thead>
+    $('researchTable').innerHTML = `<thead><tr><th>學生</th><th>進場</th><th>進場沒玩</th><th>換券</th><th>選遊戲</th><th>選機率遊戲</th><th>贏了留下</th><th>輸了換掉</th><th>拉霸平均押幾張</th><th>不拉</th><th>猜大小平均第幾關收手</th><th>猜大小爆掉</th><th>賽跑押中機率／選位置</th><th>夾娃娃失敗後再夾</th><th>存錢 存／到期／提早</th><th>選項平均期望值</th></tr></thead>
       <tbody>${sum.length ? sum.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.visits}</td><td>${x.noPlay}</td><td>${x.buys}</td><td>${x.picks}</td><td>${x.luck}</td><td>${x.winStay}</td><td>${x.loseShift}</td><td>${x.slotBet}</td><td>${x.keep}</td><td>${x.hiloCash}</td><td>${x.hiloBust}</td><td>${x.raceP}</td><td>${x.clawAgain}</td><td>${x.save}</td><td>${x.ev}</td></tr>`).join('') : '<tr><td colspan="16">還沒有資料，學生玩過遊樂場就會出現</td></tr>'}</tbody>`;
   }
   $('btnResearchCsv').onclick = async () => {
