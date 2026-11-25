@@ -27,7 +27,7 @@
     <footer class="statusbar">
       <button class="mini-link" id="btnSound" title="音效開關"></button>
       <button class="mini-link" id="btnDisplay" title="放大成展示模式（最大化）"></button>
-      <button class="mini-link" id="btnZone" title="遊戲區開關"></button>
+      <button class="mini-link" id="btnZone" title="遊樂場開關"></button>
       <button class="mini-link" id="btnMono" title="打開虎尾大富翁"></button>
       <span class="grow"></span>
       <span id="summary"></span>
@@ -40,7 +40,7 @@
       <div class="d-title"><span id="dClass"></span><small id="dSummary"></small></div>
       <div class="drag-space"></div>
       <button class="d-btn" id="dMono" title="打開虎尾大富翁"></button>
-      <button class="d-btn" id="dZone" title="遊戲區開關"></button>
+      <button class="d-btn" id="dZone" title="遊樂場開關"></button>
       <button class="d-btn" id="dSound" title="音效開關"></button>
       <button class="d-btn" id="dUndo" title="復原上一步（Ctrl+Z）"></button>
       <button class="d-btn" id="dSettings" title="設定"></button>
@@ -70,7 +70,7 @@
       <button data-tab="score">加減分</button>
       <button data-tab="lottery">抽獎機</button>
       <button data-tab="reward">獎勵</button>
-      <button data-tab="slot">遊戲區／大富翁</button>
+      <button data-tab="slot">遊樂場／大富翁</button>
       <button data-tab="sound">音效</button>
       <button data-tab="look">外觀</button>
       <button data-tab="stats">紀錄</button>
@@ -177,15 +177,36 @@
         </div>
       </div>
 
-      <!-- 遊戲區 -->
+      <!-- 遊樂場 -->
       <div data-pane="slot" class="hidden">
         <div class="card">
-          <h3>🎪 遊戲區</h3>
-          <label class="check"><input id="inZoneOn" type="checkbox"> 開放遊戲區（上課時可以關掉，獎勵時間再打開）</label>
+          <h3>🎡 遊樂場</h3>
+          <label class="check"><input id="inZoneOn" type="checkbox"> 開放遊樂場（上課時可以關掉，獎勵時間再打開）</label>
           <label class="field inline">1 張入場券要用幾點換
             <input id="inZonePrice" type="number" min="1" max="999" step="1" class="num-in">
           </label>
-          <p class="muted">學生用點數換入場券（點數會扣掉），再用入場券玩吃角子老虎機或刮刮樂。換之前會提醒：這些點數也可以存起來換獎勵（機會成本）。左下角和展示模式右上角的 🎪 可以快速開關。</p>
+          <p class="muted">學生用點數換入場券（點數會扣掉），再用入場券玩遊樂場裡的 8 種遊戲。換之前會提醒：這些點數也可以存起來換獎勵（機會成本）。左下角和展示模式右上角的 🎡 可以快速開關。</p>
+        </div>
+        <div class="card">
+          <h3>🕹️ 遊樂場的遊戲</h3>
+          <label class="field inline">🧸 夾娃娃機：對準後夾中的機率（%）
+            <input id="inClawGrip" type="number" min="0" max="100" step="5" class="num-in">
+          </label>
+          <label class="field inline">🧸 夾到娃娃得幾點
+            <input id="inClawPrize" type="number" min="1" max="999" step="1" class="num-in">
+          </label>
+          <p class="muted" id="clawEv"></p>
+          <label class="field">🔵 彈珠台 9 格的點數（左到右，用逗號分開）
+            <input id="inPlinko" type="text">
+          </label>
+          <p class="muted" id="plinkoEv"></p>
+          <label class="field inline">🔨 打地鼠：每打中幾隻得 1 點
+            <input id="inMolePer" type="number" min="1" max="20" step="1" class="num-in">
+          </label>
+          <label class="field inline">🐷 存錢機：存幾天可以領回 2 張
+            <input id="inSaveDays" type="number" min="1" max="60" step="1" class="num-in">
+          </label>
+          <p class="muted">🃏 猜大小（最多 5 關，猜對翻倍）、🏁 小動物賽跑（兔子 35%×2 … 烏龜 8%×10）、🧠 翻牌記憶配對（越少翻錯分越多）照固定規則。</p>
         </div>
         <div class="card">
           <h3>🏙️ 虎尾大富翁（雛形）</h3>
@@ -292,12 +313,20 @@
           <p class="muted">「平均幾次一加碼」可以當作不定量增強的實際比率，給 IEP 或行為紀錄參考。</p>
         </div>
         <div class="card">
+          <h3>🔬 遊樂場研究紀錄</h3>
+          <p class="muted">學生在遊樂場的每一個選擇都會在背景記下來（學生看不到）：選了哪個遊戲、上一次玩什麼和輸贏、每個選項的機率和期望值、點數和入場券。下面是每位學生的摘要，完整資料請匯出 CSV 用 Excel 打開。</p>
+          <p class="muted" id="researchCount"></p>
+          <div class="table-wrap"><table class="stats" id="researchTable"></table></div>
+          <p class="muted">贏了留下：贏了以後，下一次玩的還是同一個遊戲的比例；輸了換掉：輸了以後換別的遊戲的比例（括號是次數）。「贏」＝拿到的點數比用掉的入場券價值多。期望值是負的代表平均會虧。</p>
+          <div class="btn-row"><button id="btnResearchCsv" class="primary">匯出 CSV</button><button id="btnResearchClear" class="warn">清空研究紀錄</button></div>
+        </div>
+        <div class="card">
           <h3>最近的紀錄</h3>
           <div id="logList" class="log-list"></div>
         </div>
       </div>
 
-      <p class="version">學生加分小工具 v6.1.0-雛形</p>
+      <p class="version">學生加分小工具 v7.0.0</p>
     </div>
   </section>
 
@@ -322,6 +351,8 @@
 <script src="lottery.js"></script>
 <script src="slot.js"></script>
 <script src="scratch.js"></script>
+<script src="research.js"></script>
+<script src="arcade.js"></script>
 <script src="zone.js"></script>
 <script src="monopoly.js"></script>
 <script src="app.js"></script>

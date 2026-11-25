@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('api', {
   setMini: (on, h) => ipcRenderer.invoke('win:mini', on, h),
   fit: (h) => ipcRenderer.invoke('win:fit', h),
   openDataDir: () => ipcRenderer.invoke('app:openDataDir'),
+  exportCsv: (name, text) => ipcRenderer.invoke('export:csv', name, text),
   setZoom: (z) => webFrame.setZoomFactor(z),
   getZoom: () => webFrame.getZoomFactor()
 });

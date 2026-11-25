@@ -183,6 +183,17 @@ ipcMain.handle('file:delete', (_e, rel) => {
   return true;
 });
 
+// 研究紀錄匯出成 CSV，放在資料夾裡的「研究紀錄」
+ipcMain.handle('export:csv', (_e, name, text) => {
+  const safe = String(name).replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) || 'export';
+  const dir = path.join(DATA_DIR, '研究紀錄');
+  fs.mkdirSync(dir, { recursive: true });
+  const full = path.join(dir, safe + '.csv');
+  fs.writeFileSync(full, String(text), 'utf8');
+  shell.showItemInFolder(full);
+  return full;
+});
+
 ipcMain.handle('win:toggleMax', () => {
   if (!win || winState.mini) return false;
   if (win.isMaximized()) win.unmaximize(); else win.maximize();

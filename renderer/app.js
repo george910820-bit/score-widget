@@ -80,7 +80,8 @@
       lottery: { skin: 'gacha', baseOne: true, replace: false, pityOn: true, pityN: 4, ticketMode: 'free', ticketEvery: 5, machinePool: {} },
       slot: { on: true, bets: defaultBets() },
       zone: { on: true, price: 10, scratch: defaultScratch() },
-      monopoly: { perRoll: 5, startCoins: 100, salary: 50, autoOpen: false }
+      monopoly: { perRoll: 5, startCoins: 100, salary: 50, autoOpen: false },
+      arcade: { clawGrip: 30, clawPrize: 30, plinko: '80,30,12,5,2,5,12,30,80', molePer: 2, saveDays: 7 }
     };
   }
   function defaultData() {
@@ -108,7 +109,7 @@
     const out = { ...base, ...d };
     const ds = defaultSettings();
     const s = d.settings || {};
-    out.settings = { ...ds, ...s, sound: { ...ds.sound, ...(s.sound || {}) }, lottery: { ...ds.lottery, ...(s.lottery || {}) }, slot: { ...ds.slot, ...(s.slot || {}) }, zone: { ...ds.zone, ...(s.zone || {}) }, monopoly: { ...ds.monopoly, ...(s.monopoly || {}) } };
+    out.settings = { ...ds, ...s, sound: { ...ds.sound, ...(s.sound || {}) }, lottery: { ...ds.lottery, ...(s.lottery || {}) }, slot: { ...ds.slot, ...(s.slot || {}) }, zone: { ...ds.zone, ...(s.zone || {}) }, monopoly: { ...ds.monopoly, ...(s.monopoly || {}) }, arcade: { ...ds.arcade, ...(s.arcade || {}) } };
     // 第四版：拉霸改用入場券押注，舊的押注（用點數）換成新的預設
     if (!s.zone) out.settings.slot.bets = defaultBets();
     if (!Array.isArray(out.settings.zone.scratch) || !out.settings.zone.scratch.length) out.settings.zone.scratch = defaultScratch();
@@ -126,6 +127,7 @@
         st.pityMiss = Number(st.pityMiss) || 0;
         if (st.avatar === undefined) st.avatar = null;
         st.zoneTickets = Number(st.zoneTickets) || 0;
+        if (!Array.isArray(st.savings)) st.savings = [];
       });
     });
     if (!Array.isArray(out.history)) out.history = [];
@@ -177,7 +179,7 @@
 
   // 改資料之前先記一份（紀錄很長，所以只記長度），按「復原」就回到上一步
   function snapshot(label) {
-    const { history, ...rest } = data;
+    const { history, research, ...rest } = data;
     undoStack.push({ label, json: JSON.stringify(rest), hlen: history.length });
     if (undoStack.length > 60) undoStack.shift();
     updateUndoBtn();
@@ -188,6 +190,7 @@
     if (!last) { toast('沒有可以復原的動作', false); return; }
     const rest = JSON.parse(last.json);
     rest.history = data.history.slice(0, last.hlen);
+    rest.research = data.research; // 研究紀錄只增不減，復原不會刪掉學生做過的選擇
     data = normalize(rest);
     save();
     Sound.configure(data.settings.sound);
@@ -374,7 +377,7 @@
           <button class="pm minus" data-act="minus" title="扣分">−</button>
           <button class="pm plus" data-act="plus" title="加分">＋</button>
           ${lottoBtn(s, 'pm lotto')}
-          <button class="pm slot${data.settings.zone.on ? '' : ' off'}" data-act="zone" title="${data.settings.zone.on ? '遊戲區' : '遊戲區休息中'}">🎪${s.zoneTickets ? `<i class="badge">${s.zoneTickets}</i>` : ''}</button>
+          <button class="pm slot${data.settings.zone.on ? '' : ' off'}" data-act="zone" title="${data.settings.zone.on ? '遊樂場' : '遊樂場休息中'}">🎡${s.zoneTickets ? `<i class="badge">${s.zoneTickets}</i>` : ''}</button>
           <button class="pm gift${rp && rp.can ? ' can' : ''}" data-act="redeem" title="兌換獎勵">🎁</button>
         </div>
       </div>`;
@@ -511,6 +514,7 @@
     else if (h.type === 'slot') what = h.keep ? '拉霸：選擇不拉' : `拉霸${esc(h.item)}（🎟${h.tickets || h.cost}）：${h.win ? `中了 +${h.prize}` : '沒中'}`;
     else if (h.type === 'scratch') what = `刮刮樂：${h.win ? `${esc(h.item)} 中了 +${h.prize}` : '沒中'}`;
     else if (h.type === 'zone-ticket') what = `換入場券 ${h.delta}`;
+    else if (h.type === 'arcade') what = h.saved ? `🐷 ${esc(h.item)}` : `${esc(h.item)}（🎟${h.tickets}）：${h.prize > 0 ? `+${h.prize}` : '沒得分'}`;
     else if (h.type === 'mp') what = `🏙️ ${esc(h.item)}`;
     else if (h.type === 'ticket') what = esc(h.item || '獲得抽獎券');
     else if (h.studentId === null) what = esc(h.name);
@@ -535,7 +539,7 @@
       </div>
       <div class="ss-actions">
         <button id="ssLotto" class="primary">🎲 抽獎</button>
-        <button id="ssZone"${data.settings.zone.on ? '' : ' class="off"'}>🎪 遊戲區${s.zoneTickets ? `（🎟 ${s.zoneTickets}）` : ''}</button>
+        <button id="ssZone"${data.settings.zone.on ? '' : ' class="off"'}>🎡 遊樂場${s.zoneTickets ? `（🎟 ${s.zoneTickets}）` : ''}</button>
         <button id="ssRedeem">🎁 兌換獎勵</button>
         ${t ? '<button id="ssTicket">🎟 送 1 張抽獎券</button>' : ''}
       </div>
@@ -606,6 +610,7 @@
     if (Slot.isOpen()) Slot.close();
     if (Scratch.isOpen()) Scratch.close();
     if (Monopoly.isOpen()) Monopoly.close();
+    if (Arcade.isOpen()) Arcade.close();
     Zone.close(true);
     closeSheet();
     $('settings').classList.remove('hidden');
@@ -688,6 +693,12 @@
     const pr = Number(z.price) || 10;
     $('inZoneOn').checked = !!z.on;
     $('inMpPer').value = data.settings.monopoly.perRoll;
+    const ar = data.settings.arcade;
+    $('inClawGrip').value = ar.clawGrip; $('inClawPrize').value = ar.clawPrize;
+    $('inPlinko').value = Arcade.plinkoPrizes().join(', ');
+    $('inMolePer').value = ar.molePer; $('inSaveDays').value = ar.saveDays;
+    $('clawEv').textContent = `夾一次平均 ${(ar.clawGrip / 100 * ar.clawPrize - pr).toFixed(1).replace('.0', '')} 點（已扣入場券 ${pr} 點；沒對準就夾不到，實際更低）`;
+    $('plinkoEv').textContent = `丟一顆平均 ${(Arcade.plinkoEV() - pr).toFixed(1).replace('.0', '')} 點（已扣入場券 ${pr} 點）。中間的格子最常掉進去。`;
     $('inMpStart').value = data.settings.monopoly.startCoins;
     $('inMpSalary').value = data.settings.monopoly.salary;
     $('inMpAuto').checked = !!data.settings.monopoly.autoOpen;
@@ -750,19 +761,43 @@
       const draws = mine.filter((h) => h.type === 'lottery');
       const hits = draws.filter((h) => h.hit).length;
       const redeem = mine.filter((h) => h.type === 'redeem').length;
-      const games = mine.filter((h) => (h.type === 'slot' && !h.keep) || h.type === 'scratch');
+      const games = mine.filter((h) => (h.type === 'slot' && !h.keep) || h.type === 'scratch' || (h.type === 'arcade' && !h.saved));
       const keeps = mine.filter((h) => h.type === 'slot' && h.keep).length;
       const bought = mine.filter((h) => h.type === 'zone-ticket').reduce((a, h) => a - h.delta, 0);
-      const won = games.reduce((a, h) => a + (h.type === 'scratch' || h.tickets ? (h.prize || 0) : h.delta), 0);
+      const won = games.reduce((a, h) => a + (h.type === 'scratch' || h.type === 'arcade' || h.tickets ? (h.prize || 0) : h.delta), 0);
       const net = won - bought;
       const slots = games;
       return `<tr><td>${esc(s.name)}</td><td class="up">+${plus}</td><td class="down">−${minus}</td><td>${draws.length}</td><td>${hits}</td><td>${hits ? (draws.length / hits).toFixed(1).replace('.0', '') : '−'}</td><td>${redeem}</td><td>${slots.length}${keeps ? `／不拉 ${keeps}` : ''}</td><td class="${net > 0 ? 'up' : net < 0 ? 'down' : ''}">${slots.length || bought ? (net > 0 ? '+' : '') + net : '−'}</td></tr>`;
     }).join('');
-    $('statsTable').innerHTML = `<thead><tr><th>學生</th><th>加分</th><th>扣分</th><th>抽獎</th><th>有加碼</th><th>平均幾次一加碼</th><th>兌換</th><th>遊戲區次數</th><th>遊戲區淨得</th></tr></thead><tbody>${rows || '<tr><td colspan="9">還沒有學生</td></tr>'}</tbody>`;
+    $('statsTable').innerHTML = `<thead><tr><th>學生</th><th>加分</th><th>扣分</th><th>抽獎</th><th>有加碼</th><th>平均幾次一加碼</th><th>兌換</th><th>遊樂場次數</th><th>遊樂場淨得</th></tr></thead><tbody>${rows || '<tr><td colspan="9">還沒有學生</td></tr>'}</tbody>`;
     const recent = hs.slice(-40).reverse();
     $('logList').innerHTML = recent.length ? recent.map(logLine).join('') : '<div class="muted">這段期間還沒有紀錄</div>';
+    renderResearch();
   }
   $('inRange').onchange = renderStats;
+
+  // ---------- 研究紀錄 ----------
+  function renderResearch() {
+    const c = cls();
+    const rows = Research.rows().filter((r) => r.cls === c.name || c.students.some((s) => s.id === r.sid));
+    $('researchCount').textContent = `目前一共 ${Research.count()} 筆（這個班 ${rows.length} 筆）`;
+    const sum = Research.summary(rows);
+    $('researchTable').innerHTML = `<thead><tr><th>學生</th><th>進場</th><th>進場沒玩</th><th>換券</th><th>選遊戲</th><th>選機率遊戲</th><th>贏了留下</th><th>輸了換掉</th><th>拉霸平均押幾張</th><th>不拉</th><th>猜大小平均第幾關收手</th><th>猜大小爆掉</th><th>賽跑押的勝率</th><th>夾娃娃失敗後再夾</th><th>存錢 存／到期／提早</th><th>選項平均期望值</th></tr></thead>
+      <tbody>${sum.length ? sum.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.visits}</td><td>${x.noPlay}</td><td>${x.buys}</td><td>${x.picks}</td><td>${x.luck}</td><td>${x.winStay}</td><td>${x.loseShift}</td><td>${x.slotBet}</td><td>${x.keep}</td><td>${x.hiloCash}</td><td>${x.hiloBust}</td><td>${x.raceP}</td><td>${x.clawAgain}</td><td>${x.save}</td><td>${x.ev}</td></tr>`).join('') : '<tr><td colspan="16">還沒有資料，學生玩過遊樂場就會出現</td></tr>'}</tbody>`;
+  }
+  $('btnResearchCsv').onclick = async () => {
+    if (!Research.count()) { toast('還沒有研究紀錄', false); return; }
+    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    const name = `遊樂場研究紀錄_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+    try {
+      const full = await window.api.exportCsv(name, Research.csv());
+      toast('已匯出到資料夾的「研究紀錄」：' + full.split(/[\\/]/).pop(), false);
+    } catch (e) { toast('匯出失敗，請再試一次', false); }
+  };
+  $('btnResearchClear').onclick = async () => {
+    if (!(await confirmBox('確定要清空研究紀錄嗎？\n建議先匯出 CSV 備份。清空後不能復原。', '清空'))) return;
+    Research.clear(); save(); renderResearch(); toast('研究紀錄已清空', false);
+  };
 
   // 名單
   $('inClassName').addEventListener('change', (e) => {
@@ -1026,16 +1061,16 @@
   const togglePin = async () => { pinned = await window.api.setPin(!pinned); renderPin(); toast(pinned ? '已置頂' : '已取消置頂', false); };
   function renderZoneBtns() {
     const on = !!data.settings.zone.on;
-    $('btnZone').innerHTML = `<span class="em">🎪</span><span>${on ? '遊戲區開' : '遊戲區關'}</span>`;
+    $('btnZone').innerHTML = `<span class="em">🎡</span><span>${on ? '遊樂場開' : '遊樂場關'}</span>`;
     $('btnZone').classList.toggle('dimtxt', !on);
-    $('dZone').innerHTML = '<span class="em">🎪</span>';
+    $('dZone').innerHTML = '<span class="em">🎡</span>';
     $('dZone').classList.toggle('off', !on);
-    $('dZone').title = on ? '遊戲區開放中（點一下關閉）' : '遊戲區休息中（點一下打開）';
+    $('dZone').title = on ? '遊樂場開放中（點一下關閉）' : '遊樂場休息中（點一下打開）';
   }
   const toggleZone = () => {
     data.settings.zone.on = !data.settings.zone.on;
     save(); renderZoneBtns(); renderScores();
-    toast(data.settings.zone.on ? '遊戲區開放了 🎪' : '遊戲區休息中 😴', false);
+    toast(data.settings.zone.on ? '遊樂場開放了 🎡' : '遊樂場休息中 😴', false);
   };
   $('btnZone').onclick = toggleZone;
   $('btnMono').innerHTML = '<span class="em">🏙️</span><span>大富翁</span>';
@@ -1047,6 +1082,18 @@
   $('inMpStart').onchange = (e) => { MP().startCoins = Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 100))); save(); };
   $('inMpSalary').onchange = (e) => { MP().salary = Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 50))); save(); };
   $('inMpAuto').onchange = (e) => { MP().autoOpen = e.target.checked; save(); };
+  const AR = () => data.settings.arcade;
+  const clampIn = (v, lo, hi, d) => { const n = Number(v); return Math.max(lo, Math.min(hi, Math.round(v === '' || !Number.isFinite(n) ? d : n))); };
+  $('inClawGrip').onchange = (e) => { AR().clawGrip = clampIn(e.target.value, 0, 100, 30); save(); renderSlotSettings(); };
+  $('inClawPrize').onchange = (e) => { AR().clawPrize = clampIn(e.target.value, 1, 999, 30); save(); renderSlotSettings(); };
+  $('inPlinko').onchange = (e) => {
+    const arr = e.target.value.split(/[,，\s]+/).filter(Boolean);
+    if (arr.length !== 9) toast('彈珠台要填 9 個數字（左到右）', false);
+    else AR().plinko = arr.map((x) => clampIn(x, 0, 999, 0)).join(',');
+    save(); renderSlotSettings();
+  };
+  $('inMolePer').onchange = (e) => { AR().molePer = clampIn(e.target.value, 1, 20, 2); save(); };
+  $('inSaveDays').onchange = (e) => { AR().saveDays = clampIn(e.target.value, 1, 60, 7); save(); };
   $('btnMpReset').onclick = async () => {
     if (!(await confirmBox('確定要開始新的一局大富翁嗎？\n金幣、位置、地產、欠款會重新開始（擲骰機會保留；按錯可以復原）', '新的一局'))) return;
     Monopoly.reset(); toast('大富翁新的一局開始了', true);
@@ -1076,6 +1123,7 @@
     if (Lottery.isOpen()) { Lottery.onKey(e); return; }
     if (Slot.isOpen()) { Slot.onKey(e); return; }
     if (Scratch.isOpen()) { Scratch.onKey(e); return; }
+    if (Arcade.isOpen()) { Arcade.onKey(e); return; }
     if (Zone.isOpen()) { Zone.onKey(e); return; }
     if (Monopoly.isOpen()) { Monopoly.onKey(e); return; }
     const typing = e.target.closest('input, textarea, select');

@@ -33,13 +33,22 @@ window.Scratch = (() => {
   function open(student, onClose) {
     close();
     onCloseCb = onClose || null;
-    if ((student.zoneTickets || 0) < 1) { W.toast('入場券不夠，先到遊戲區換一張', false); if (onCloseCb) { const cb = onCloseCb; onCloseCb = null; cb(student); } return; }
+    if ((student.zoneTickets || 0) < 1) { W.toast('入場券不夠，先到遊樂場換一張', false); if (onCloseCb) { const cb = onCloseCb; onCloseCb = null; cb(student); } return; }
     // 用掉 1 張入場券，結果馬上記錄
     W.snapshot(`${student.name} 刮刮樂`);
     const card = makeCard();
     student.zoneTickets -= 1;
     const prize = card.win ? Number(card.win.prize) || 0 : 0;
+    {
+      const rows = Z().scratch;
+      const pWin = rows.reduce((a, r) => a + (Number(r.chance) || 0), 0);
+      const ev = rows.reduce((a, r) => a + (Number(r.chance) || 0) / 100 * (Number(r.prize) || 0), 0);
+      Research.decide(student, '刮刮樂', '買一張', { p: pWin, prize: Math.max(...rows.map((r) => Number(r.prize) || 0)), cost: price(), ev: ev - price() });
+    }
     student.score += prize;
+    {
+      Research.outcome(student, '刮刮樂', prize, 1, card.win ? `刮到 ${card.win.sym}` : '');
+    }
     W.data.history.push({
       t: new Date().toISOString(), type: 'scratch', classId: W.cls().id, studentId: student.id, name: student.name,
       delta: prize, score: student.score, item: card.win ? card.win.sym : '沒中', win: !!card.win, prize, tickets: 1
@@ -54,7 +63,7 @@ window.Scratch = (() => {
       <div class="lotto-top">
         <div class="lotto-who">${Avatar.html(student, 40)}<div><b>${esc(student.name)}</b><div class="lotto-sub" id="scSub"></div></div></div>
         <div class="slot-title">🎫 刮刮樂</div>
-        <button class="icon-btn lotto-x" id="scClose" title="回遊戲區（Esc）">✕</button>
+        <button class="icon-btn lotto-x" id="scClose" title="回遊樂場（Esc）">✕</button>
       </div>
       <div class="sc-main" id="scMain"><div class="fx-behind"></div>
         <div class="sc-card" id="scCard">
@@ -266,7 +275,7 @@ window.Scratch = (() => {
       <div class="res-lines">${lines.map((l) => `<div>${l}</div>`).join('')}</div>
       <div class="btn-row center">
         ${(s.zoneTickets || 0) >= 1 ? '<button id="scAgain" class="primary">再刮一張</button>' : ''}
-        <button id="scBack">回遊戲區</button>
+        <button id="scBack">回遊樂場</button>
       </div>`;
     box.classList.remove('hidden');
     const again = box.querySelector('#scAgain');

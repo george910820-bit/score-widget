@@ -744,3 +744,134 @@ body.is-display .mp-title { font-size: 1.6em; }
 .roulette .rball { filter: drop-shadow(0 0 2px rgba(255,255,255,.6)); }
 .roulette .pocket.win-pocket { animation: pocketWin .45s ease-in-out infinite alternate; }
 @keyframes pocketWin { 0% { fill: #2f9e44; } 100% { fill: #ffe082; } }
+
+/* ===================== 遊樂場：新遊戲 ===================== */
+.zg-tag { display: inline-block; font-size: .72em; padding: 1px 8px; border-radius: 10px; margin-bottom: 4px; font-weight: bold; }
+.zg-tag.luck { background: #ffe0e0; color: #c0392b; }
+.zg-tag.skill { background: #dff5e3; color: #1e7b3a; }
+.arcade-overlay { position: fixed; inset: 0; z-index: 50; background: var(--bg, #2b2150); color: #fff; display: flex; flex-direction: column; }
+.arcade-overlay .lotto-info { color: rgba(255,255,255,.85); min-height: 1.4em; }
+.arcade-overlay .lotto-result { color: var(--ink); }
+.arcade-overlay .lotto-actions { gap: 10px; flex-wrap: wrap; padding: 0 10px 12px; }
+.arcade-overlay.busy .lotto-actions { opacity: .4; pointer-events: none; }
+.ar-main { position: relative; flex: 1; min-height: 0; display: flex; }
+.ar-stage { position: relative; z-index: 1; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; overflow: hidden; }
+.go.small { min-width: 0; padding: 0 18px; font-size: 1.1em; height: 46px; }
+.go.cash { background: #2e9d5b; box-shadow: 0 4px 0 #1d6b3c; }
+.go.hold { touch-action: none; user-select: none; }
+body.is-display .go.small { height: 64px; font-size: 1.6em; padding: 0 26px; }
+
+/* 彈珠台 */
+.pl-cv { display: block; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+
+/* 夾娃娃機 */
+.cm { display: flex; flex-direction: column; align-items: center; height: 100%; max-height: 520px; aspect-ratio: 3 / 4; max-width: 100%; }
+.cm-top { width: 100%; background: #ff6fa8; border-radius: 18px 18px 0 0; text-align: center; padding: 6px; font-weight: bold; color: #fff; letter-spacing: 2px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.15); }
+.cm-box { position: relative; flex: 1; width: 100%; background: linear-gradient(180deg, rgba(200,235,255,.25), rgba(200,235,255,.08)); border: 8px solid #ff6fa8; border-top: 0; border-bottom: 0; overflow: hidden; }
+.cm-rail { position: absolute; left: 0; right: 0; top: 6px; height: 6px; background: #c9c9d6; }
+.cm-claw { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 2; }
+.cm-claw.sway .cm-head { animation: sway .5s ease-in-out infinite alternate; }
+@keyframes sway { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+.cm-rope { width: 3px; height: 14px; background: #ddd; }
+.cm-head { position: relative; width: 34px; height: 16px; background: #c0c0cc; border-radius: 8px 8px 4px 4px; transform-origin: top center; }
+.cm-head i { position: absolute; top: 10px; width: 6px; height: 24px; background: #9a9aa8; border-radius: 3px; transition: transform .35s; }
+.cm-head i.l { left: 2px; transform: rotate(18deg); transform-origin: top center; }
+.cm-head i.r { right: 2px; transform: rotate(-18deg); transform-origin: top center; }
+.cm-claw.open .cm-head i.l { transform: rotate(42deg); }
+.cm-claw.open .cm-head i.r { transform: rotate(-42deg); }
+.cm-held { font-size: 40px; line-height: 1; margin-top: -4px; min-height: 0; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.cm-held.fall { animation: fall .6s ease-in forwards; }
+.cm-held.drop { animation: fall .5s ease-in forwards; }
+@keyframes fall { to { transform: translateY(160px) rotate(40deg); opacity: 0; } }
+.cm-chute { position: absolute; left: 0; bottom: 0; width: 17%; height: 32%; background: rgba(0,0,0,.35); border-right: 4px solid #ff6fa8; border-top: 4px solid #ff6fa8; display: flex; align-items: flex-end; justify-content: center; font-size: .75em; padding-bottom: 6px; color: #ffd1e3; }
+.cm-prizes { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; }
+.cm-p { position: absolute; bottom: 6px; transform: translateX(-50%); font-size: 44px; line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,.4)); font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.cm-base { width: 100%; height: 54px; background: #ff6fa8; border-radius: 0 0 18px 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 0 #c2427a; }
+.cm-slot { background: #3b0f27; border-radius: 8px; padding: 2px 14px; }
+body.is-display .cm-p { font-size: 70px; }
+body.is-display .cm-held { font-size: 64px; }
+
+/* 猜大小 */
+.hl { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(100%, 560px); }
+.hl-pot { background: rgba(0,0,0,.25); border-radius: 14px; padding: 6px 16px; font-size: 1.05em; }
+.hl-pot b { color: #ffd54f; font-size: 1.5em; }
+.hl-cards { display: flex; align-items: center; gap: 18px; }
+.hl-arrow { font-size: 2em; opacity: .7; }
+.hl-card { width: clamp(90px, 22vmin, 180px); aspect-ratio: 5 / 7; perspective: 800px; }
+.hl-inner { position: relative; width: 100%; height: 100%; transition: transform .6s; transform-style: preserve-3d; }
+.hl-card.back .hl-inner { transform: rotateY(180deg); }
+.hl-front, .hl-backside { position: absolute; inset: 0; border-radius: 14px; display: flex; align-items: center; justify-content: center; backface-visibility: hidden; box-shadow: 0 6px 16px rgba(0,0,0,.35); }
+.hl-front { background: #fff; color: #c0392b; font-size: clamp(40px, 11vmin, 96px); font-weight: bold; }
+.hl-backside { background: repeating-linear-gradient(45deg, #1e6b3c 0 10px, #2a8a50 10px 20px); color: #fff; font-size: 3em; transform: rotateY(180deg); border: 4px solid #fff; }
+.hl-prob { width: 100%; background: rgba(0,0,0,.2); border-radius: 14px; padding: 10px 14px; }
+.hp-row { display: grid; grid-template-columns: 6em 1fr 3.5em; align-items: center; gap: 8px; margin: 4px 0; }
+.hp-row i { height: 16px; border-radius: 8px; display: block; min-width: 2px; }
+.hp-row i.up { background: #ffd54f; }
+.hp-row i.down { background: #90caf9; }
+.hp-note { font-size: .8em; opacity: .8; text-align: center; margin-top: 4px; }
+
+/* 小動物賽跑 */
+.rc { width: min(100%, 860px); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.rc-odds { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.rc-o { background: rgba(255,255,255,.12); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .85em; }
+.rc-o .e { font-size: 34px; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.rc-o .pi { display: flex; gap: 2px; }
+.rc-o .pi i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); }
+.rc-o .pi i.on { background: #ffd54f; }
+.rc-o .pay { color: #ffd54f; font-weight: bold; }
+.rc-bets { display: flex; flex-direction: column; gap: 4px; }
+.rb-row { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.18); border-radius: 10px; padding: 4px 8px; }
+.rb-row.no { opacity: .45; }
+.rb-row .nm { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rb-row .tk { font-size: .85em; opacity: .85; }
+.rb-row .picks { display: flex; gap: 4px; }
+.rb-row .picks button { width: 38px; height: 34px; border: 2px solid transparent; border-radius: 9px; background: rgba(255,255,255,.15); font-size: 20px; cursor: pointer; }
+.rb-row .picks button.sel { background: #ffd54f; border-color: #fff; }
+.rc-track { width: min(100%, 900px); display: flex; flex-direction: column; gap: 6px; }
+.lane { position: relative; height: clamp(44px, 9vh, 86px); background: #8a6a3a; border-radius: 10px; border-bottom: 3px dashed rgba(255,255,255,.35); }
+.lane .ln { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font-weight: bold; opacity: .7; }
+.lane .runner { position: absolute; top: 50%; left: 24px; transform: translateY(-50%) scaleX(-1); font-size: clamp(30px, 7vh, 64px); line-height: 1; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.lane .finish { position: absolute; right: 8px; top: 0; bottom: 0; width: 10px; background: repeating-linear-gradient(0deg, #fff 0 8px, #222 8px 16px); }
+.lane .backers { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); display: flex; gap: 2px; }
+.rc-comment { text-align: center; font-size: 1.4em; font-weight: bold; color: #ffe082; margin-top: 8px; }
+
+/* 打地鼠 */
+.mo-intro { text-align: center; line-height: 1.8; font-size: 1.1em; }
+.mo-big { font-size: 80px; }
+.mo { display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(100%, 560px); }
+.mo-hud { display: flex; align-items: center; gap: 14px; width: 100%; font-size: 1.4em; }
+.mo-hud b { color: #ffd54f; }
+.mo-time { flex: 1; height: 12px; background: rgba(0,0,0,.3); border-radius: 6px; overflow: hidden; }
+.mo-time i { display: block; height: 100%; width: 100%; background: #8bc34a; }
+.mo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: min(100%, 62vh); touch-action: manipulation; }
+.hole { position: relative; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(ellipse at 50% 70%, #2a1606 45%, #6b4520 47%, #6b4520 60%, transparent 62%); overflow: hidden; cursor: pointer; }
+.hole .mole { position: absolute; left: 50%; bottom: -70%; transform: translateX(-50%); font-size: clamp(40px, 9vh, 80px); transition: bottom .12s; pointer-events: none; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.hole.up .mole { bottom: 18%; }
+.hole.hit .mole { transform: translateX(-50%) scale(.8) rotate(-15deg); filter: brightness(1.6); }
+.hole.gold { box-shadow: 0 0 20px #ffd54f; }
+
+/* 翻牌記憶配對 */
+.mem { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 8px; width: min(100%, calc(var(--cols) * 15vh)); }
+.mc { aspect-ratio: 3 / 4; perspective: 600px; cursor: pointer; }
+.mc-in { position: relative; width: 100%; height: 100%; transition: transform .4s; transform-style: preserve-3d; }
+.mc.show .mc-in { transform: rotateY(180deg); }
+.mc-f, .mc-b { position: absolute; inset: 0; border-radius: 10px; display: flex; align-items: center; justify-content: center; backface-visibility: hidden; }
+.mc-b { background: linear-gradient(135deg, #4fc3f7, #0277bd); color: #fff; font-size: 1.8em; font-weight: bold; border: 3px solid #fff; }
+.mc-f { background: #fff; transform: rotateY(180deg); font-size: clamp(26px, 6vh, 56px); font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.mc.done .mc-f { background: #e8f5e9; box-shadow: 0 0 0 3px #66bb6a inset; }
+
+/* 存錢機 */
+.sv { width: min(100%, 720px); background: rgba(255,255,255,.1); border-radius: 16px; padding: 10px 14px; }
+.sv-head { display: flex; align-items: center; gap: 10px; }
+.sv-head > div { flex: 1; }
+.sv-ic { font-size: 40px; }
+.sv-d { font-size: .82em; opacity: .85; }
+.sv-head button, .sv-item button { border: 0; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: bold; background: #fff; color: var(--ink); }
+.sv-head button.primary, .sv-item button.primary { background: #ffd54f; }
+.sv-head button.off { opacity: .45; }
+.sv-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.sv-item { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,.2); border-radius: 10px; padding: 6px 10px; }
+.sv-item.ready { background: rgba(255,213,79,.25); justify-content: space-between; font-weight: bold; }
+.sv-bar { flex: 1; height: 8px; background: rgba(255,255,255,.2); border-radius: 4px; overflow: hidden; }
+.sv-bar i { display: block; height: 100%; background: #ffd54f; }
+.arcade-overlay.pl .ar-result { bottom: auto; top: 62px; }

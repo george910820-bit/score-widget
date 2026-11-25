@@ -1,4 +1,4 @@
-// 吃角子老虎機（拉霸）：在遊戲區用入場券押注，學生自己選押注大小，體驗機率與機會成本
+// 吃角子老虎機（拉霸）：在遊樂場用入場券押注，學生自己選押注大小，體驗機率與機會成本
 // 圖案用台灣小吃；拉之前用圖示顯示「10 次大約中幾次」；不做「差一點就中」的誘導畫面
 window.Slot = (() => {
   'use strict';
@@ -105,7 +105,7 @@ window.Slot = (() => {
     const go = cur.root.querySelector('#slotGo');
     const bet = bets.find((b) => b.id === cur.bet);
     go.classList.toggle('off', !cur.bet);
-    go.textContent = !cur.bet ? '先選一個' : cur.bet === 'keep' ? '不拉了，回遊戲區' : `拉！（用 ${bet.cost} 張）`;
+    go.textContent = !cur.bet ? '先選一個' : cur.bet === 'keep' ? '不拉了，回遊樂場' : `拉！（用 ${bet.cost} 張）`;
     cur.root.querySelector('#slotLever').classList.toggle('ready', !!bet);
     requestAnimationFrame(layout);
   }
@@ -213,8 +213,10 @@ window.Slot = (() => {
     const before = s.score;
     const ticketsBefore = s.zoneTickets || 0;
     s.zoneTickets = ticketsBefore - bet.cost;
+    Research.decide(s, '吃角子老虎機', bet.name, { p: bet.chance, prize: bet.prize, cost: bet.cost * price(), note: `用 ${bet.cost} 張入場券（手上原本 ${ticketsBefore} 張）` });
     s.score = s.score + (win ? bet.prize : 0);
     const delta = s.score - before;
+    Research.outcome(s, '吃角子老虎機', win ? bet.prize : 0, bet.cost, '');
     W.data.history.push({
       t: new Date().toISOString(), type: 'slot', classId: W.cls().id, studentId: s.id, name: s.name,
       delta, score: s.score, item: bet.name, cost: bet.cost, tickets: bet.cost, win, prize: win ? bet.prize : 0, chance: bet.chance
@@ -266,6 +268,7 @@ window.Slot = (() => {
   // 選「不拉」也是一種選擇，記錄下來
   function keepPoints() {
     const s = cur.student;
+    Research.decide(s, '吃角子老虎機', '不拉', { cost: 0, ev: 0, note: `留著 ${s.zoneTickets || 0} 張入場券` });
     W.data.history.push({ t: new Date().toISOString(), type: 'slot', classId: W.cls().id, studentId: s.id, name: s.name, delta: 0, score: s.score, item: '不拉', cost: 0, win: false, prize: 0, keep: true });
     W.save();
     const box = cur.root.querySelector('#slotResult');
