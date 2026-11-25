@@ -967,3 +967,54 @@ body.is-display .pb-side { width: 300px; font-size: 1.25em; }
 .lane .backers .avatar { width: 18px !important; height: 18px !important; font-size: 10px !important; }
 .lane .rank { right: 22px; font-size: 30px; }
 .rc-legend { text-align: center; font-size: .85em; opacity: .85; }
+
+/* 拉霸：前兩格一樣 → 最後一格「就差一個！」 */
+.slot-window { position: relative; }
+.reach-tag { position: absolute; left: 50%; top: -14%; transform: translateX(-50%) scale(0); background: #ff1744; color: #fff; font-weight: 900; padding: 2px 12px; border-radius: 999px; white-space: nowrap; font-size: calc(var(--u) * 5); box-shadow: 0 0 14px #ff1744; transition: transform .25s cubic-bezier(.3,1.6,.5,1); z-index: 3; }
+.reach .reach-tag { transform: translateX(-50%) scale(1); animation: reachPulse .4s infinite alternate; }
+@keyframes reachPulse { to { box-shadow: 0 0 28px #ffea00; background: #ff6d00; } }
+.reach .reel:nth-child(3) { box-shadow: 0 0 0 calc(var(--u) * 1.2) #ffea00, 0 0 calc(var(--u) * 8) #ffea00; animation: reachGlow .3s infinite alternate; }
+@keyframes reachGlow { to { box-shadow: 0 0 0 calc(var(--u) * 1.2) #ff1744, 0 0 calc(var(--u) * 12) #ff1744; } }
+.reach .slot-cab { animation: reachShake .12s infinite; }
+@keyframes reachShake { 50% { transform: translateX(1px); } }
+
+/* 夾娃娃機（3D）：搖桿前後左右 */
+.joy { position: relative; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle, #5a1a40 0 55%, #3b0f27 56%); border: 4px solid #ff6fa8; touch-action: none; user-select: none; flex: none; cursor: grab; }
+.joy-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%; transform: translate(-50%, -50%); background: radial-gradient(circle at 35% 30%, #ff8a80, #d50000 70%); box-shadow: 0 4px 8px rgba(0,0,0,.5); pointer-events: none; }
+.joy .jl { position: absolute; color: #ffb3d1; font-size: .75em; font-weight: bold; pointer-events: none; }
+.joy .jl.u { top: 3px; left: 50%; transform: translateX(-50%); }
+.joy .jl.d { bottom: 3px; left: 50%; transform: translateX(-50%); }
+.joy .jl.l { left: 5px; top: 50%; transform: translateY(-50%); }
+.joy .jl.r { right: 5px; top: 50%; transform: translateY(-50%); }
+.arcade-overlay .lotto-actions { align-items: center; }
+body.is-display .joy { width: 170px; height: 170px; }
+body.is-display .joy-knob { width: 72px; height: 72px; }
+#cmGo { min-width: 30%; }
+.ck3d { aspect-ratio: 4 / 5; }
+.ck3d .ck-glass { background: #1a0f3a; }
+.ck-cv { position: absolute; inset: 0; display: block; }
+.rc-board { background: rgba(0,0,0,.25); border-radius: 12px; padding: 8px 12px; }
+.rbd-h { font-weight: bold; color: #ffe082; margin-bottom: 4px; }
+.rbd-h span { font-weight: normal; font-size: .8em; color: #fff; opacity: .8; }
+.rbd-row { display: grid; grid-template-columns: 2em 1.8em 3em 1fr 3.5em 9em; align-items: center; gap: 6px; font-size: .9em; padding: 1px 0; }
+.rbd-row .rk { text-align: center; }
+.rbd-row .e { font-size: 1.3em; }
+.rbd-row .bar { height: 12px; background: rgba(255,255,255,.15); border-radius: 6px; overflow: hidden; }
+.rbd-row .bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd54f, #ff9800); }
+.rbd-row .cnt { text-align: right; font-weight: bold; }
+.rbd-row .pc { font-size: .8em; opacity: .9; display: flex; gap: 6px; justify-content: flex-end; }
+.rbd-row .pc em { font-style: normal; opacity: .7; }
+.rbd-note { font-size: .78em; opacity: .75; text-align: center; margin-top: 2px; }
+
+/* 換到入場券的大特效 */
+.tk-fly { position: absolute; inset: 0; z-index: 30; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.tk-rays { position: absolute; left: 50%; top: 50%; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; background: repeating-conic-gradient(rgba(255,213,79,.35) 0 10deg, transparent 10deg 20deg); animation: tkRays 1.6s ease-out forwards; }
+@keyframes tkRays { 0% { transform: scale(.2) rotate(0); opacity: 0; } 20% { opacity: 1; } 75% { opacity: .9; } 100% { transform: scale(1) rotate(90deg); opacity: 0; } }
+.tk-card { position: relative; display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #ffe082, #ffb300); border: 5px dashed #fff; border-radius: 18px; padding: 10px 26px; box-shadow: 0 0 40px #ffd54f, 0 10px 30px rgba(0,0,0,.4); animation: tkCard 1.6s cubic-bezier(.3,1.4,.5,1) forwards; }
+.tk-card span { font-size: 64px; }
+.tk-card b { font-size: 48px; color: #b71c1c; text-shadow: 0 2px 0 #fff; }
+@keyframes tkCard { 0% { transform: scale(0) rotate(-30deg); } 30% { transform: scale(1.3) rotate(6deg); } 45% { transform: scale(1) rotate(0); } 70% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(.25); opacity: .2; } }
+.tk-txt { position: relative; margin-top: 14px; font-size: 2em; font-weight: 900; color: #fff; text-shadow: 0 3px 0 #e65100, 0 0 20px #ffd54f; animation: tkTxt 1.6s ease-out forwards; }
+@keyframes tkTxt { 0% { transform: scale(0); } 25% { transform: scale(1.2); } 40% { transform: scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
+.z-ticket-big.bump { animation: tkBump .5s cubic-bezier(.3,1.8,.5,1); }
+@keyframes tkBump { 0% { transform: scale(1); } 40% { transform: scale(1.25); box-shadow: 0 0 30px #ffd54f; } 100% { transform: scale(1); } }

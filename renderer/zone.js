@@ -85,10 +85,20 @@ window.Zone = (() => {
     Research.buy(s, p, rp && !rp.can ? `換之前：${rp.text}` : (rp ? '換之前已經可以換獎勵' : ''));
     W.data.history.push({ t: new Date().toISOString(), type: 'zone-ticket', classId: W.cls().id, studentId: s.id, name: s.name, delta: -p, score: s.score, item: '換入場券 1 張' });
     W.save();
-    Sound.ticket();
+    Sound.bigTicket();
     render();
     const r = cur.root.getBoundingClientRect(), b = cur.root.querySelector('.z-ticket-big').getBoundingClientRect();
-    FX.burst(cur.root, b.left - r.left + b.width / 2, b.top - r.top + b.height / 2, 30, ['#ffd54f', '#ffffff', '#ff8a65']);
+    // 入場券從畫面中間跳出來，再飛進票夾
+    const fly = document.createElement('div');
+    fly.className = 'tk-fly';
+    fly.style.setProperty('--tx', `${b.left - r.left + b.width / 2 - r.width / 2}px`);
+    fly.style.setProperty('--ty', `${b.top - r.top + b.height / 2 - r.height / 2}px`);
+    fly.innerHTML = '<div class="tk-rays"></div><div class="tk-card"><span>🎟</span><b>+1</b></div><div class="tk-txt">入場券到手！</div>';
+    cur.root.appendChild(fly);
+    const root = cur.root;
+    FX.burst(root, r.width / 2, r.height / 2, 60, ['#ffd54f', '#ffffff', '#ff8a65', '#69f0ae']);
+    setTimeout(() => { FX.burst(root, b.left - r.left + b.width / 2, b.top - r.top + b.height / 2, 30, ['#ffd54f', '#ffffff', '#ff8a65']); const big = root.querySelector('.z-ticket-big'); if (big) { big.classList.remove('bump'); void big.offsetWidth; big.classList.add('bump'); } }, 1250);
+    setTimeout(() => fly.remove(), 1700);
     W.renderAll();
   }
 

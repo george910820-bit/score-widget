@@ -120,12 +120,12 @@ window.FX = (() => {
   function setBar(st) { st.layer.querySelector('.fx-bar i').style.width = Math.round(st.energy * 100) + '%'; }
 
   // 開始等待：星光、能量條、點擊回饋、等待音效。回傳停止的函式
-  function suspense(root, ms) {
+  function suspense(root, ms, opt) {
     const st = ensure(root);
     st.waiting = true; st.orbit = 1; st.energy = 0; setBar(st);
     st.layer.querySelector('.fx-energy').classList.remove('hidden');
     root.classList.add('fx-waiting');
-    const stopSound = Sound.suspense(ms);
+    const stopSound = opt && opt.music ? opt.music(ms) : Sound.suspense(ms);
     run(st);
     let done = false;
     return () => {

@@ -276,6 +276,65 @@ window.Sound = (() => {
     },
     coins() { if (!on()) return; for (let i = 0; i < 16; i++) chime(1900 + Math.random() * 1300, i * 0.055, 0.35, 0.09, 0.4); },
 
+    // ---------- 賽跑音樂：緊張的奔馳節奏，越跑越快 ----------
+    raceMusic(sec = 8) {
+      if (!on()) return () => {};
+      const a = ctx, start = a.currentTime;
+      const bus = a.createGain(); bus.gain.value = 0.9; bus.connect(master);
+      const srcs = [];
+      const push = (n) => { if (n) srcs.push(n); };
+      // A 小調：Am → F → G → E（每小節 4 拍）
+      const CH = [
+        { b: 110, n: [440, 523.25, 659.25] },
+        { b: 87.31, n: [349.23, 440, 523.25] },
+        { b: 98, n: [392, 493.88, 587.33] },
+        { b: 82.41, n: [329.63, 415.3, 493.88] }
+      ];
+      // 速度從 150 慢慢加到 200 BPM
+      let t = 0, beat = 0;
+      while (t < sec) {
+        const p = t / sec, bpm = 150 + p * 50, q = 60 / bpm, s16 = q / 4;
+        const ch = CH[Math.floor(beat / 4) % 4];
+        // 馬蹄聲：噠噠「咚」
+        push(noiseHit(t, 0.05, 700, null, 'bandpass', 0.10, 1.2, 0.03, bus));
+        push(noiseHit(t + s16, 0.05, 900, null, 'bandpass', 0.09, 1.2, 0.03, bus));
+        push(tone(95, t + s16 * 2, 0.14, 'sine', 0.34, 50, 0, bus));
+        push(noiseHit(t + s16 * 2, 0.07, 500, 200, 'lowpass', 0.16, 0.8, 0.03, bus));
+        // 小鈸
+        for (let k = 0; k < 4; k++) push(noiseHit(t + s16 * k, 0.03, 8000, null, 'highpass', k === 2 ? 0.05 : 0.025, 0.7, 0, bus));
+        // 低音：八分音符
+        [0, 2].forEach((k, i) => push(tone(i ? ch.b * 1.5 : ch.b, t + s16 * k, s16 * 1.8, 'sawtooth', 0.09, null, 0.05, bus)));
+        // 琶音：十六分音符上上下下，後半段高八度
+        const oct = p > 0.55 ? 2 : 1;
+        for (let k = 0; k < 4; k++) {
+          const idx = [0, 1, 2, 1][(beat * 4 + k) % 4];
+          push(tone(ch.n[idx] * oct, t + s16 * k, s16 * 0.9, 'square', 0.035 + p * 0.02, null, 0.12, bus));
+        }
+        // 每小節第一拍：弦樂重音
+        if (beat % 4 === 0) ch.n.forEach((f) => push(tone(f / 2, t, q * 1.6, 'sawtooth', 0.05, null, 0.3, bus)));
+        t += q; beat++;
+      }
+      // 最後衝刺：往上升
+      const o = a.createOscillator(), f = a.createBiquadFilter(), gg = a.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(220, start + sec * 0.6); o.frequency.exponentialRampToValueAtTime(880, start + sec);
+      f.type = 'lowpass'; f.frequency.value = 2500;
+      gg.gain.setValueAtTime(0.0001, start); gg.gain.setValueAtTime(0.0001, start + sec * 0.6); gg.gain.exponentialRampToValueAtTime(0.06, start + sec);
+      o.connect(f).connect(gg).connect(bus); o.start(start); o.stop(start + sec + 0.1); srcs.push(o);
+      return () => {
+        try { bus.gain.setTargetAtTime(0.0001, a.currentTime, 0.08); } catch (e) { /* ignore */ }
+        setTimeout(() => srcs.forEach((n) => { try { n.stop(); } catch (e) { /* 已經停了 */ } }), 400);
+      };
+    },
+    // ---------- 換到入場券：收銀機＋上升號角＋閃亮亮 ----------
+    bigTicket() {
+      if (!on()) return;
+      boom(0, 0.4);
+      noiseHit(0, 0.08, 3500, null, 'bandpass', 0.25, 4, 0.1);         // 喀
+      chime(2093, 0.06, 0.9, 0.22); chime(2637, 0.1, 1.1, 0.2);       // 鏘～
+      [523.25, 659.25, 783.99, 1046.5].forEach((fr, i) => brass(fr, 0.18 + i * 0.08, i === 3 ? 0.7 : 0.14, 0.11));
+      for (let i = 0; i < 12; i++) chime(1568 + i * 160, 0.5 + i * 0.035, 0.5, 0.08, 0.45);
+      boom(0.42, 0.35);
+    },
     // ---------- 彈珠台 ----------
     bumper(n = 0) { if (!on()) return; const f = [660, 740, 880, 990, 1175][n % 5]; tone(f, 0, 0.09, 'square', 0.07, f * 1.5, 0.12); tone(f * 2, 0.02, 0.12, 'sine', 0.06, null, 0.2); },
     flipper() { if (!on()) return; noiseHit(0, 0.05, 900, 300, 'lowpass', 0.25, 1, 0.05); tone(140, 0, 0.08, 'square', 0.1, 90, 0.05); },

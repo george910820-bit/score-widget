@@ -322,27 +322,14 @@ window.Arcade = (() => {
   const PLUSH = ['🧸', '🐻', '🐰', '🦄', '🐥', '🐼', '🐸', '🐶'];
   function claw(student, back) {
     const sh = shell({ student, icon: '🧸', title: '夾娃娃機', bg: '#3a1030', back });
-    const BALLC = ['#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#00acc1', '#f06292', '#ffffff'];
-    const pile = Array.from({ length: 70 }, (_, i) => {
-      const row = Math.floor(i / 14);
-      return `<i style="left:${(i % 14) * 7.2 + Math.random() * 4}%;bottom:${row * 5.5 + Math.random() * 2}%;--c:${BALLC[Math.floor(Math.random() * BALLC.length)]};--s:${22 + Math.random() * 10}px"></i>`;
-    }).join('');
     const bulbs = Array.from({ length: 13 }, (_, i) => `<i style="--d:${(i % 2) * 0.4}s;--c:${['#fff176', '#ff80ab', '#80d8ff'][i % 3]}"></i>`).join('');
     const stars = (n) => Array.from({ length: n }, (_, i) => `<i style="--d:${(i % 3) * 0.3}s;--c:${['#ff5252', '#ffeb3b', '#69f0ae', '#40c4ff'][i % 4]}">★</i>`).join('');
     sh.stage.innerHTML = `
-      <div class="ck">
+      <div class="ck ck3d">
         <div class="ck-top"><div class="ck-bulbs">${bulbs}</div><div class="ck-title"><span>夾</span><span>娃</span><span>娃</span><span>機</span></div></div>
         <div class="ck-body">
           <div class="ck-post">${stars(6)}</div>
-          <div class="ck-glass" id="cmBox">
-            <div class="ck-gantry"></div>
-            <div class="cm-claw" id="cmClaw"><div class="cm-rope" id="cmRope"></div>
-              <div class="ck-claw"><div class="ck-hub"></div><i class="p l"></i><i class="p m"></i><i class="p r"></i><div class="cm-held" id="cmHeld"></div></div></div>
-            <div class="ck-hole"></div>
-            <div class="ck-pile">${pile}</div>
-            <div class="cm-prizes" id="cmPrizes"></div>
-            <div class="ck-shine"></div>
-          </div>
+          <div class="ck-glass" id="cmBox"><canvas class="ck-cv"></canvas></div>
           <div class="ck-post">${stars(6)}</div>
         </div>
         <div class="ck-panel">
@@ -355,115 +342,246 @@ window.Arcade = (() => {
         </div>
       </div>`;
     const box = sh.stage.querySelector('#cmBox');
-    const clawEl = sh.stage.querySelector('#cmClaw');
-    const rope = sh.stage.querySelector('#cmRope');
-    const held = sh.stage.querySelector('#cmHeld');
-    const stick = sh.stage.querySelector('#ckStick');
+    const cv = box.querySelector('canvas');
+    const stickI = sh.stage.querySelector('#ckStick i');
     const out = sh.stage.querySelector('#ckOut');
-    let x = 55, tries = 0, moving = 0, raf = 0, failRun = 0;
-    const spot = () => 24 + Math.random() * 66;
-    let prizes = [28, 42, 56, 70, 84].map((px) => ({ x: px + (Math.random() * 6 - 3), e: PLUSH[Math.floor(Math.random() * PLUSH.length)] }));
-    const renderPrizes = () => { sh.stage.querySelector('#cmPrizes').innerHTML = prizes.map((p, i) => `<span class="cm-p" data-i="${i}" style="left:${p.x}%">${p.e}</span>`).join(''); };
-    const setX = () => { clawEl.style.left = x + '%'; };
-    renderPrizes(); setX();
-    const loop = () => {
-      if (moving && !sh.busy) { x = Math.max(22, Math.min(92, x + moving * 0.6)); setX(); clawEl.classList.add('sway'); } else clawEl.classList.remove('sway');
-      stick.className = 'ck-stick' + (moving && !sh.busy ? (moving < 0 ? ' tl' : ' tr') : '');
+    // ---------- 3D 世界：x 左右（-1～1）、y 高度（0～1.7）、z 前後（0＝玻璃，1.4＝最裡面） ----------
+    const BX = 1, BY = 1.25, BZ = 1.4, FLOOR = 0.16, TOPY = 1.02, CHUTE = { x0: -1, x1: -0.58, z0: 0, z1: 0.42, h: 0.5 };
+    const CAM = { y: 1.85, z: -1.75 }, LOOK = { y: 0.4, z: 0.72 };
+    const pitch = Math.atan2(CAM.y - LOOK.y, LOOK.z - CAM.z), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    let F = 300, OX = 0, OY = 0, Wc = 400, Hc = 400, g;
+    const P = (x, y, z) => { const dy = y - CAM.y, dz = z - CAM.z; const cz = dz * cp - dy * sp, cy = dy * cp + dz * sp; return { x: OX + F * x / cz, y: OY - F * cy / cz, s: F / cz }; };
+    const BALLC = ['#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#00acc1', '#f06292', '#ffffff'];
+    const inChute = (x, z, m = 0) => x < CHUTE.x1 + m && z < CHUTE.z1 + m;
+    const balls = [];
+    while (balls.length < 230) {
+      const x = -0.95 + Math.random() * 1.9, z = 0.04 + Math.random() * 1.32;
+      if (inChute(x, z, 0.04)) continue;
+      balls.push({ x, z, y: 0.03 + Math.random() * 0.1, c: BALLC[Math.floor(Math.random() * BALLC.length)], r: 0.06 + Math.random() * 0.025 });
+    }
+    balls.sort((a, b) => b.z - a.z || a.y - b.y);
+    const newPrize = () => {
+      for (let n = 0; n < 50; n++) {
+        const p = { x: -0.4 + Math.random() * 1.25, z: 0.15 + Math.random() * 1.1, e: PLUSH[Math.floor(Math.random() * PLUSH.length)] };
+        if (!prizes.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < 0.3)) return p;
+      }
+      return { x: Math.random() * 0.8, z: 0.3 + Math.random() * 0.9, e: PLUSH[0] };
+    };
+    const prizes = [];
+    for (let i = 0; i < 7; i++) prizes.push(newPrize());
+    const HOME = { x: 0.2, z: 0.35 };
+    const c = { x: HOME.x, z: HOME.z, y: TOPY, open: 0.3, held: null, heldY: 0, fall: null, sway: 0 };
+    const v = { x: 0, z: 0 }, keys = {};
+    let tries = 0, failRun = 0, raf = 0, last = performance.now();
+    const aligned = () => { let best = -1, bd = 0.17; prizes.forEach((p, i) => { const d = Math.hypot(p.x - c.x, p.z - c.z); if (d < bd) { bd = d; best = i; } }); return best; };
+    function size() {
+      const r = box.getBoundingClientRect();
+      Wc = Math.max(100, r.width); Hc = Math.max(100, r.height);
+      const dpr = window.devicePixelRatio || 1;
+      cv.width = Wc * dpr; cv.height = Hc * dpr; cv.style.width = Wc + 'px'; cv.style.height = Hc + 'px';
+      g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // 讓整個箱子剛好塞進畫面
+      F = 1; OX = 0; OY = 0;
+      const pts = [];
+      [-BX, BX].forEach((x) => { pts.push(P(x, 0, 0), P(x, 0, BZ), P(x, BY, BZ), P(x, 0.55, 0)); });
+      const minX = Math.min(...pts.map((p) => p.x)), maxX = Math.max(...pts.map((p) => p.x)), minY = Math.min(...pts.map((p) => p.y)), maxY = Math.max(...pts.map((p) => p.y));
+      F = Math.min(Wc * 0.98 / (maxX - minX), Hc * 0.96 / (maxY - minY));
+      OX = Wc / 2 - F * (minX + maxX) / 2; OY = Hc / 2 - F * (minY + maxY) / 2;
+    }
+    function quad(a, b, cc, d, fill, stroke) {
+      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.lineTo(cc.x, cc.y); g.lineTo(d.x, d.y); g.closePath();
+      if (fill) { g.fillStyle = fill; g.fill(); }
+      if (stroke) { g.strokeStyle = stroke; g.stroke(); }
+    }
+    function drawBall(b) {
+      const p = P(b.x, b.y + b.r, b.z), r = b.r * p.s;
+      const gr = g.createRadialGradient(p.x - r * 0.35, p.y - r * 0.4, r * 0.1, p.x, p.y, r);
+      gr.addColorStop(0, '#fff'); gr.addColorStop(0.3, b.c); gr.addColorStop(1, 'rgba(0,0,0,.55)');
+      g.fillStyle = gr; g.beginPath(); g.arc(p.x, p.y, r, 0, Math.PI * 2); g.fill();
+    }
+    function drawPrize(p, y, alpha) {
+      const q = P(p.x, y, p.z), fs = 0.42 * q.s;
+      g.globalAlpha = alpha == null ? 1 : alpha;
+      g.fillStyle = '#000';
+      g.font = `${fs}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+      g.textAlign = 'center'; g.textBaseline = 'bottom';
+      g.fillText(p.e, q.x, q.y + fs * 0.12);
+      g.globalAlpha = 1;
+    }
+    function drawClaw() {
+      const top = P(c.x, BY - 0.04, c.z), hub = P(c.x, c.y, c.z), s = hub.s;
+      // 繩子
+      g.strokeStyle = '#e0e0e0'; g.lineWidth = Math.max(1.5, 0.018 * s); g.beginPath(); g.moveTo(top.x, top.y); g.lineTo(hub.x, hub.y); g.stroke();
+      const sw = Math.sin(c.sway) * 0.05 * s;
+      const L = 0.24 * s, o = 0.05 + c.open * 0.11;
+      const prong = (dx, dz, back) => {
+        const tip = P(c.x + dx * o, c.y - 0.24, c.z + dz * o);
+        const mid = P(c.x + dx * (o + 0.05), c.y - 0.1, c.z + dz * (o + 0.05));
+        g.strokeStyle = back ? '#c79a00' : '#fbc02d'; g.lineWidth = 0.05 * s; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(hub.x + sw, hub.y); g.quadraticCurveTo(mid.x + sw, mid.y, tip.x + sw, tip.y); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 0.015 * s;
+        g.beginPath(); g.moveTo(hub.x + sw, hub.y); g.quadraticCurveTo(mid.x + sw, mid.y, tip.x + sw, tip.y); g.stroke();
+      };
+      prong(0, 1, true);                 // 後面那一支
+      if (c.held) drawPrize({ x: c.x, z: c.z, e: c.held }, c.y - 0.3 - c.heldY);
+      prong(-0.87, -0.5); prong(0.87, -0.5);
+      const gr = g.createRadialGradient(hub.x - 0.02 * s + sw, hub.y - 0.03 * s, 1, hub.x + sw, hub.y, 0.085 * s);
+      gr.addColorStop(0, '#fff9c4'); gr.addColorStop(0.5, '#fbc02d'); gr.addColorStop(1, '#e65100');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(hub.x + sw, hub.y, 0.085 * s, 0.06 * s, 0, 0, Math.PI * 2); g.fill();
+      g.lineCap = 'butt';
+    }
+    function draw(now) {
+      g.clearRect(0, 0, Wc, Hc);
+      const C = (x, y, z) => P(x, y, z);
+      // 內側：後牆、左右牆、地板
+      const bg = g.createLinearGradient(0, 0, 0, Hc); bg.addColorStop(0, '#2a1a5e'); bg.addColorStop(1, '#4b2c8f');
+      quad(C(-BX, 0, BZ), C(BX, 0, BZ), C(BX, BY, BZ), C(-BX, BY, BZ), bg);
+      quad(C(-BX, 0, 0), C(-BX, 0, BZ), C(-BX, BY, BZ), C(-BX, BY, 0), 'rgba(60,30,110,.95)');
+      quad(C(BX, 0, 0), C(BX, 0, BZ), C(BX, BY, BZ), C(BX, BY, 0), 'rgba(60,30,110,.95)');
+      quad(C(-BX, 0, 0), C(BX, 0, 0), C(BX, 0, BZ), C(-BX, 0, BZ), '#5b3a9e');
+      // 後牆的小燈
+      for (let i = 0; i < 9; i++) { const p = C(-0.9 + i * 0.225, BY - 0.12, BZ); g.fillStyle = `hsla(${(i * 40 + now / 10) % 360},90%,70%,${0.5 + 0.5 * Math.sin(now / 200 + i)})`; g.beginPath(); g.arc(p.x, p.y, 0.025 * p.s, 0, Math.PI * 2); g.fill(); }
+      // 上方軌道：左右兩條（前後方向）＋一條會前後移動的橫桿
+      g.lineWidth = 3; g.strokeStyle = '#fbc02d';
+      [[-BX + 0.03], [BX - 0.03]].forEach(([x]) => { const a = C(x, BY - 0.03, 0.02), b = C(x, BY - 0.03, BZ - 0.02); g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); });
+      { const a = C(-BX + 0.03, BY - 0.04, c.z), b = C(BX - 0.03, BY - 0.04, c.z); g.lineWidth = Math.max(3, 0.04 * a.s); g.strokeStyle = '#f9a825'; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); }
+      { const k = C(c.x, BY - 0.04, c.z); g.fillStyle = '#fdd835'; g.fillRect(k.x - 0.07 * k.s, k.y - 0.04 * k.s, 0.14 * k.s, 0.08 * k.s); }
+      // 珠子堆
+      balls.forEach(drawBall);
+      // 出口（透明的方筒）
+      quad(C(CHUTE.x1, 0, CHUTE.z0), C(CHUTE.x1, 0, CHUTE.z1), C(CHUTE.x1, CHUTE.h, CHUTE.z1), C(CHUTE.x1, CHUTE.h, CHUTE.z0), 'rgba(255,255,255,.18)', 'rgba(255,255,255,.8)');
+      quad(C(CHUTE.x0, 0, CHUTE.z1), C(CHUTE.x1, 0, CHUTE.z1), C(CHUTE.x1, CHUTE.h, CHUTE.z1), C(CHUTE.x0, CHUTE.h, CHUTE.z1), 'rgba(255,255,255,.12)', 'rgba(255,255,255,.8)');
+      quad(C(CHUTE.x0, CHUTE.h, CHUTE.z0), C(CHUTE.x1, CHUTE.h, CHUTE.z0), C(CHUTE.x1, CHUTE.h, CHUTE.z1), C(CHUTE.x0, CHUTE.h, CHUTE.z1), 'rgba(10,0,30,.55)', '#fff');
+      quad(C(CHUTE.x0, 0, CHUTE.z0), C(CHUTE.x1, 0, CHUTE.z0), C(CHUTE.x1, CHUTE.h, CHUTE.z0), C(CHUTE.x0, CHUTE.h, CHUTE.z0), 'rgba(255,255,255,.16)', 'rgba(255,255,255,.9)');
+      { const t = C((CHUTE.x0 + CHUTE.x1) / 2, CHUTE.h * 0.45, 0); g.fillStyle = '#fff'; g.font = `bold ${Math.round(0.1 * t.s)}px "Microsoft JhengHei UI",sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('出口', t.x, t.y); }
+      // 爪子正下方的影子（看得出前後）
+      const ai = sh.busy ? -1 : aligned();
+      { const p = C(c.x, FLOOR + 0.06, c.z); g.fillStyle = ai >= 0 ? 'rgba(105,240,174,.5)' : 'rgba(0,0,0,.45)'; g.beginPath(); g.ellipse(p.x, p.y, 0.14 * p.s, 0.06 * p.s, 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = ai >= 0 ? '#69f0ae' : 'rgba(255,255,255,.7)'; g.lineWidth = 2; g.setLineDash([5, 4]); g.stroke(); g.setLineDash([]); }
+      // 娃娃和爪子：遠的先畫
+      const items = prizes.map((p) => ({ z: p.z, d: () => drawPrize(p, FLOOR) }));
+      if (c.fall) items.push({ z: c.fall.z, d: () => drawPrize(c.fall, c.fall.y, c.fall.a) });
+      items.push({ z: c.z - 0.001, d: () => {
+        if (!sh.busy) { const h = P(c.x, c.y - 0.26, c.z), f = P(c.x, FLOOR + 0.06, c.z); g.strokeStyle = ai >= 0 ? 'rgba(105,240,174,.7)' : 'rgba(255,255,255,.35)'; g.lineWidth = 1.5; g.setLineDash([4, 5]); g.beginPath(); g.moveTo(h.x, h.y); g.lineTo(f.x, f.y); g.stroke(); g.setLineDash([]); }
+        drawClaw();
+      } });
+      items.sort((a, b) => b.z - a.z).forEach((it) => it.d());
+      // 前面的玻璃反光
+      g.fillStyle = 'rgba(255,255,255,.07)';
+      g.beginPath(); g.moveTo(Wc * 0.05, 0); g.lineTo(Wc * 0.2, 0); g.lineTo(Wc * 0.02, Hc); g.lineTo(0, Hc); g.lineTo(0, Hc * 0.2); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.05)'; g.beginPath(); g.moveTo(Wc * 0.26, 0); g.lineTo(Wc * 0.3, 0); g.lineTo(Wc * 0.12, Hc); g.lineTo(Wc * 0.08, Hc); g.closePath(); g.fill();
+    }
+    const loop = (now) => {
+      if (sh.closed) return;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const kx = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0), kz = (keys.ArrowUp || keys.w ? 1 : 0) - (keys.ArrowDown || keys.s ? 1 : 0);
+      const mx = kx || v.x, mz = kz || v.z;
+      if ((mx || mz) && !sh.busy) {
+        c.x = Math.max(-0.88, Math.min(0.88, c.x + mx * 0.75 * dt));
+        c.z = Math.max(0.1, Math.min(BZ - 0.12, c.z + mz * 0.75 * dt));
+        c.sway += dt * 9;
+      } else c.sway *= 0.9;
+      stickI.style.transform = sh.busy ? '' : `rotate(${mx * 25}deg) scaleY(${1 - mz * 0.3})`;
+      draw(now);
       raf = requestAnimationFrame(loop);
     };
-    raf = requestAnimationFrame(loop);
-    sh.cleanup.push(() => cancelAnimationFrame(raf));
+    const tween = (obj, key, to, ms, ease) => new Promise((res) => {
+      const from = obj[key], t0 = performance.now();
+      const step = (now) => { if (sh.closed) { res(); return; } let p = Math.min(1, (now - t0) / ms); p = ease === 'in' ? p * p : ease === 'out' ? 1 - (1 - p) * (1 - p) : p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; obj[key] = from + (to - from) * p; if (p < 1) requestAnimationFrame(step); else res(); };
+      requestAnimationFrame(step);
+    });
+    const moveTo = (x, z, ms) => Promise.all([tween(c, 'x', x, ms), tween(c, 'z', z, ms)]);
     const drop = async () => {
       if (sh.busy) return;
       if (!spend(student, 1, '夾娃娃機')) return;
       tries++;
-      const aligned = prizes.some((p) => Math.abs(p.x - x) < 6.5);
+      const ai = aligned();
       const gp = Math.max(0, Math.min(100, grip0()));
-      Research.decide(student, '夾娃娃機', '夾', { p: aligned ? gp : 0, prize: Math.max(1, Number(A().clawPrize) || 30), cost: price(), round: tries, sunk: failRun, note: aligned ? '爪子有對準娃娃' : '爪子沒對準' });
+      Research.decide(student, '夾娃娃機', '夾', { p: ai >= 0 ? gp : 0, prize: Math.max(1, Number(A().clawPrize) || 30), cost: price(), round: tries, sunk: failRun, note: ai >= 0 ? '爪子有對準娃娃' : '爪子沒對準' });
       sh.setBusy(true); sh.sub(); sh.hideResult(); FX.clear(sh.root);
+      v.x = v.z = 0;
       out.classList.remove('has'); out.innerHTML = '<span>出口</span>';
       sh.stage.querySelector('#ckBtn').classList.add('down'); setTimeout(() => { const b = sh.stage.querySelector('#ckBtn'); if (b) b.classList.remove('down'); }, 200);
-      const depth = Math.max(60, box.clientHeight * 0.8 - 66);
-      clawEl.classList.add('open');
       Sound.lever();
-      rope.style.transition = 'height 1.1s ease-in'; rope.style.height = depth + 'px';
-      await sleep(1150);
-      clawEl.classList.remove('open');
+      await tween(c, 'open', 1, 300);
+      await tween(c, 'y', FLOOR + 0.5, 1100, 'in');
       Sound.clunk();
-      await sleep(380);
-      const idx = prizes.findIndex((p) => Math.abs(p.x - x) < 6.5);
+      await tween(c, 'open', 0, 320);
+      const idx = ai;
       const success = idx >= 0 && Math.random() * 100 < gp;
-      if (idx >= 0) {
-        held.textContent = prizes[idx].e;
-        sh.stage.querySelector(`.cm-p[data-i="${idx}"]`).style.visibility = 'hidden';
-      }
-      rope.style.transition = 'height 1.4s ease-out';
-      rope.style.height = (success || idx < 0 ? 14 : depth * 0.42) + 'px';
+      let p0 = null;
+      if (idx >= 0) { p0 = prizes[idx]; prizes.splice(idx, 1); c.held = p0.e; }
       const stopWait = idx >= 0 ? FX.suspense(sh.root, 1400) : () => {};
-      await sleep(1450);
+      await tween(c, 'y', success || idx < 0 ? TOPY : 0.78, 1400, 'out');
       stopWait();
       let prize = 0;
       if (idx >= 0 && !success) {
-        held.classList.add('fall');
-        Sound.zero();
-        await sleep(600);
-        held.classList.remove('fall'); held.textContent = '';
-        sh.stage.querySelector(`.cm-p[data-i="${idx}"]`).style.visibility = '';
-        prizes[idx].x = Math.max(24, Math.min(90, prizes[idx].x + (Math.random() * 10 - 5)));
-        renderPrizes();
-        rope.style.transition = 'height .6s'; rope.style.height = '14px';
-        await sleep(600);
+        // 爪子一鬆，娃娃掉回去
+        c.open = 0.5; Sound.zero();
+        c.fall = { x: c.x, z: c.z, e: c.held, y: c.y - 0.3, a: 1 }; c.held = null;
+        await tween(c.fall, 'y', FLOOR, 450, 'in');
+        const back2 = { x: Math.max(-0.4, Math.min(0.85, p0.x + (Math.random() * 0.2 - 0.1))), z: Math.max(0.15, Math.min(1.25, p0.z + (Math.random() * 0.2 - 0.1))), e: p0.e };
+        prizes.push(back2); c.fall = null;
+        await tween(c, 'open', 0.3, 200);
+        await tween(c, 'y', TOPY, 500);
       } else if (success) {
-        clawEl.style.transition = 'left 1.2s ease-in-out';
-        x = 10; setX();
-        await sleep(1250);
-        clawEl.classList.add('open');
-        held.classList.add('drop');
+        await moveTo(-0.79, 0.21, 1300);
+        await tween(c, 'open', 1, 250);
         Sound.clunk();
-        await sleep(480);
-        const won = prizes[idx].e;
-        held.classList.remove('drop'); held.textContent = '';
-        clawEl.classList.remove('open');
-        clawEl.style.transition = '';
-        out.innerHTML = `<b>${won}</b>`; out.classList.add('has');
+        c.fall = { x: c.x, z: c.z, e: c.held, y: c.y - 0.3, a: 1 }; c.held = null;
+        await Promise.all([tween(c.fall, 'y', 0, 500, 'in'), tween(c.fall, 'a', 0.2, 500)]);
+        c.fall = null;
+        out.innerHTML = `<b>${p0.e}</b>`; out.classList.add('has');
         prize = Math.max(1, Number(A().clawPrize) || 30);
-        prizes[idx] = { x: spot(), e: PLUSH[Math.floor(Math.random() * PLUSH.length)] };
-        renderPrizes();
+        prizes.push(newPrize());
         FX.win(sh.root, 'big', sh.root.querySelector('.fx-behind'));
-        x = 55; setX();
+        await tween(c, 'open', 0.3, 200);
+        moveTo(HOME.x, HOME.z, 1200);
       } else {
         Sound.zero();
       }
       record(student, '夾娃娃機', 1, prize, { tries });
       failRun = prize ? 0 : failRun + 1;
       sh.sub();
-      await sleep(500);
+      await sleep(400);
       sh.setBusy(false);
       const lines = prize
         ? [`夾到了！得到 ${prize} 點`, `在這台一共用了 ${ticketWorth(tries)}`]
-        : [idx >= 0 ? '差一點…娃娃掉下來了' : '爪子下面沒有娃娃', `在這台已經用了 ${ticketWorth(tries)}`, '用掉的拿不回來；下一次夾中的機率還是一樣，不會因為前面失敗就比較容易。'];
+        : [idx >= 0 ? '差一點…娃娃掉下來了' : '爪子下面沒有娃娃（看看地上的影子有沒有變綠）', `在這台已經用了 ${ticketWorth(tries)}`, '用掉的拿不回來；下一次夾中的機率還是一樣，不會因為前面失敗就比較容易。'];
       sh.result(prize ? '🎉 夾到了！' : '沒夾到…', !!prize, lines, [
         ...(student.zoneTickets > 0 ? [{ label: '再夾一次', primary: true, onClick: () => {} }] : []),
         { label: '不玩了', onClick: () => sh.close() }
       ]);
     };
-    sh.info('按住 ◀ ▶ 移動爪子，對準娃娃後按「夾！」');
-    const acts = sh.actions(`<button class="go small hold" data-mv="-1">◀</button><button class="go" id="cmGo">夾！</button><button class="go small hold" data-mv="1">▶</button>`);
-    acts.querySelectorAll('[data-mv]').forEach((b) => {
-      const v = Number(b.dataset.mv);
-      b.onpointerdown = (e) => { moving = v; b.setPointerCapture(e.pointerId); };
-      b.onpointerup = b.onpointercancel = () => { moving = 0; };
-    });
+    sh.info('用搖桿把爪子移到娃娃上面（可以前後左右），爪子的影子變綠就是對準了，再按「夾！」');
+    const acts = sh.actions(`<div class="joy" id="joy"><span class="jl u">後</span><span class="jl d">前</span><span class="jl l">左</span><span class="jl r">右</span><div class="joy-knob" id="joyKnob"></div></div><button class="go" id="cmGo">夾！</button>`);
+    const joy = acts.querySelector('#joy'), knob = acts.querySelector('#joyKnob');
+    let jp = null;
+    const setJoy = (e) => {
+      const r = joy.getBoundingClientRect(), R = r.width / 2 - 18;
+      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      const d = Math.hypot(dx, dy); if (d > R) { dx = dx / d * R; dy = dy / d * R; }
+      knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      const dead = 0.18;
+      v.x = Math.abs(dx / R) > dead ? dx / R : 0;
+      v.z = Math.abs(dy / R) > dead ? -dy / R : 0;
+    };
+    joy.onpointerdown = (e) => { jp = e.pointerId; joy.setPointerCapture(e.pointerId); setJoy(e); };
+    joy.onpointermove = (e) => { if (jp === e.pointerId) setJoy(e); };
+    joy.onpointerup = joy.onpointercancel = () => { jp = null; v.x = 0; v.z = 0; knob.style.transform = 'translate(-50%, -50%)'; };
     acts.querySelector('#cmGo').onclick = drop;
+    const K = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'];
     sh.onKey = (e) => {
-      if (e.key === 'ArrowLeft') { moving = e.type === 'keydown' ? -1 : 0; return true; }
-      if (e.key === 'ArrowRight') { moving = e.type === 'keydown' ? 1 : 0; return true; }
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (K.includes(k)) { keys[k] = e.type === 'keydown'; e.preventDefault(); return true; }
       return false;
     };
-    const ku = (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') moving = 0; };
+    const ku = (e) => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; if (k in keys) keys[k] = false; };
     window.addEventListener('keyup', ku);
-    sh.cleanup.push(() => window.removeEventListener('keyup', ku));
+    sh.cleanup.push(() => { window.removeEventListener('keyup', ku); cancelAnimationFrame(raf); window.removeEventListener('resize', size); });
     sh.onSpace = drop;
+    window.addEventListener('resize', size);
+    requestAnimationFrame(() => { size(); raf = requestAnimationFrame(loop); });
   }
 
   // =====================================================================
@@ -588,6 +706,23 @@ window.Arcade = (() => {
     return top.map((v) => Math.round(v * 100));
   })();
   const BET = { win: '獨贏', place: '位置' };
+  // 排行榜：每隻動物贏幾次、進前三幾次（全班共用，存在資料裡）
+  function raceStats() {
+    const d = W.data; if (!d.arcade) d.arcade = {};
+    let st = d.arcade.race;
+    if (!st || !Array.isArray(st.wins) || st.wins.length !== RACERS.length) st = d.arcade.race = { races: 0, wins: RACERS.map(() => 0), top3: RACERS.map(() => 0) };
+    return st;
+  }
+  function boardHTML() {
+    const st = raceStats(), n = st.races;
+    const order = RACERS.map((r, i) => i).sort((a, b) => st.wins[b] - st.wins[a] || RACERS[b].p - RACERS[a].p);
+    const max = Math.max(1, ...st.wins);
+    return `<div class="rc-board"><div class="rbd-h">🏆 冠軍排行榜 <span>（一共比了 ${n} 場）</span></div>
+      ${order.map((i, k) => `<div class="rbd-row"><span class="rk">${['🥇', '🥈', '🥉', '4', '5'][k]}</span><span class="e">${RACERS[i].e}</span><b>${RACERS[i].name}</b>
+        <span class="bar"><i style="width:${st.wins[i] / max * 100}%"></i></span><span class="cnt">${st.wins[i]} 次</span>
+        <span class="pc">${n ? `實際 ${Math.round(st.wins[i] / n * 100)}%` : ''}<em>機率 ${RACERS[i].p}%</em></span></div>`).join('')}
+      ${n && n < 20 ? '<div class="rbd-note">場數還少，實際的比例會跟機率差很多；比越多場，會越接近機率</div>' : ''}</div>`;
+  }
   const payOf = (i, type) => Math.round((type === 'place' ? RACERS[i].px : RACERS[i].x) * price());
   function race(student, back) {
     const sh = shell({ student, icon: '🏁', title: '小動物賽跑', bg: '#3d5a1f', back });
@@ -597,6 +732,7 @@ window.Arcade = (() => {
       const list = W.cls().students;
       sh.stage.innerHTML = `
         <div class="rc">
+          ${boardHTML()}
           <div class="rc-odds">${RACERS.map((r, i) => `<div class="rc-o"><span class="e">${r.e}</span><b>${r.name}</b>
             <span class="pi">${Array.from({ length: 10 }, (_, k) => `<i class="${k < Math.round(r.p / 10) ? 'on' : ''}"></i>`).join('')}</span>
             <span class="od"><em>獨贏</em> 第 1 名・約 ${r.p}%<b class="pay">拿 ${payOf(i, 'win')} 點</b></span>
@@ -660,7 +796,7 @@ window.Arcade = (() => {
       const t0 = performance.now();
       let leader = -1, lastStep = 0;
       const shown = {};
-      const stop = FX.suspense(sh.root, T);
+      const stop = FX.suspense(sh.root, T, { music: (ms) => Sound.raceMusic(ms / 1000 + 0.4) });
       await new Promise((res) => {
         const frame = (now) => {
           if (sh.closed) { res(); return; }
@@ -689,6 +825,11 @@ window.Arcade = (() => {
       stop();
       if (sh.closed) return;
       cmt.textContent = `🏆 ${RACERS[win].e} ${RACERS[win].name}贏了！`;
+      {
+        const st = raceStats();
+        st.races++; st.wins[win]++; podium.forEach((i) => { st.top3[i]++; });
+        W.save();
+      }
       const winners = [];
       let bigHit = false;
       entries.forEach((s) => {

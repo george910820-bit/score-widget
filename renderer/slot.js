@@ -30,6 +30,7 @@ window.Slot = (() => {
           <div class="slot-window">
             ${[0, 1, 2].map((i) => `<div class="reel"><div class="strip" id="strip${i}"></div></div>`).join('')}
             <div class="payline"></div>
+            <div class="reach-tag">就差一個！</div>
           </div>
           <div class="slot-tray"><span>🪙</span></div>
           <div class="lever" id="slotLever" title="選好押注後，往下拉！">
@@ -140,10 +141,17 @@ window.Slot = (() => {
       st.style.transition = i === 2 ? `transform ${dur}s cubic-bezier(.1,.55,.06,1)` : `transform ${dur}s cubic-bezier(.12,.75,.25,1.03)`;
       st.style.transform = 'translateY(0)';
       cur.syms[i] = next;
-      jobs.push(sleep(dur * 1000).then(() => { Sound.reelStop(); const r = cur && cur.root.querySelectorAll('.reel')[i]; if (r) { r.classList.add('stopped'); } }));
+      jobs.push(sleep(dur * 1000).then(() => {
+        Sound.reelStop();
+        const r = cur && cur.root.querySelectorAll('.reel')[i];
+        if (r) { r.classList.add('stopped'); }
+        // 前兩格一樣：最後一格進入「就差一個！」
+        if (i === 1 && cur && targets[0] === targets[1]) { cur.root.classList.add('reach'); Sound.bell(); }
+      }));
     }
     await Promise.all(jobs);
     clearInterval(ticks);
+    if (cur) cur.root.classList.remove('reach');
   }
 
   // ---------- 拉桿 ----------
@@ -213,7 +221,7 @@ window.Slot = (() => {
     const before = s.score;
     const ticketsBefore = s.zoneTickets || 0;
     s.zoneTickets = ticketsBefore - bet.cost;
-    Research.decide(s, '吃角子老虎機', bet.name, { p: bet.chance, prize: bet.prize, cost: bet.cost * price(), note: `用 ${bet.cost} 張入場券（手上原本 ${ticketsBefore} 張）` });
+    Research.decide(s, '吃角子老虎機', bet.name, { p: bet.chance, prize: bet.prize, cost: bet.cost * price(), note: `用 ${bet.cost} 張入場券（手上原本 ${ticketsBefore} 張）；差一點效果${S().nearMiss !== false ? '開' : '關'}` });
     s.score = s.score + (win ? bet.prize : 0);
     const delta = s.score - before;
     Research.outcome(s, '吃角子老虎機', win ? bet.prize : 0, bet.cost, '');
@@ -232,7 +240,11 @@ window.Slot = (() => {
     const stopWait = FX.suspense(root, 9000);
     let targets;
     if (win) targets = [bet.sym, bet.sym, bet.sym];
-    else do { targets = [rnd(), rnd(), rnd()]; } while (targets[0] === targets[1] && targets[1] === targets[2]);
+    else if (S().nearMiss !== false) {
+      // 差一點：前兩格一樣，第三格不一樣（中不中在拉的那一刻就決定了，這只是畫面）
+      const a = rnd(); let c; do { c = rnd(); } while (c === a);
+      targets = [a, a, c];
+    } else do { targets = [rnd(), rnd(), rnd()]; } while (targets[0] === targets[1] && targets[1] === targets[2]);
     await spinReels(targets);
     stopWait();
     if (!cur || cur.root !== root) { W.renderAll(); return; }

@@ -207,6 +207,7 @@
             <input id="inSaveDays" type="number" min="1" max="60" step="1" class="num-in">
           </label>
           <p class="muted">🃏 猜大小（最多 5 關，猜對翻倍）、🏁 小動物賽跑（兔子 35%×2 … 烏龜 8%×10）、🧠 翻牌記憶配對（越少翻錯分越多）照固定規則。</p>
+          <div class="btn-row"><button id="btnRaceReset">重設賽跑冠軍排行榜</button></div>
         </div>
         <div class="card">
           <h3>🏙️ 虎尾大富翁（雛形）</h3>
@@ -225,6 +226,8 @@
         </div>
         <div class="card">
           <h3>🎰 吃角子老虎機的押注</h3>
+          <label class="check"><input id="inNearMiss" type="checkbox"> 沒中的時候，前兩格一定一樣（「就差一個！」）</label>
+          <p class="muted">只改變畫面，不改變中獎機率：中不中在拉下去的那一刻就決定了。研究紀錄會記下這個開關，可以比較開、關時學生的玩法差多少。</p>
           <div id="slotBetList"></div>
           <div class="btn-row"><button id="btnBetAdd">＋ 新增押注</button></div>
           <p class="muted">每一列下面會算出「平均每拉一次會多或少幾點」（已經扣掉入場券的價值 <span id="outPrice"></span> 點），方便你設計：例如押大看起來獎品很大，其實平均會虧。</p>
@@ -272,6 +275,7 @@
             <button data-test="zero">▶ 沒加碼</button>
             <button data-test="fanfare">▶ 兌換獎勵</button>
             <button data-test="ticket">▶ 拿到抽獎券</button>
+            <button data-test="bigTicket">▶ 換到入場券</button>
           </div>
         </div>
         <input id="inSoundFile" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a" class="hidden">
@@ -326,7 +330,7 @@
         </div>
       </div>
 
-      <p class="version">學生加分小工具 v7.2.0</p>
+      <p class="version">學生加分小工具 v7.3.0</p>
     </div>
   </section>
 

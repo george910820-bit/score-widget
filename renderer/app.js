@@ -78,7 +78,7 @@
       step: 1, sort: 'list', noNegative: true, opacity: 100, zoom: 100,
       sound: { on: true, volume: 70, plus: null, minus: null, fileVersion: 0 },
       lottery: { skin: 'gacha', baseOne: true, replace: false, pityOn: true, pityN: 4, ticketMode: 'free', ticketEvery: 5, machinePool: {} },
-      slot: { on: true, bets: defaultBets() },
+      slot: { on: true, bets: defaultBets(), nearMiss: true },
       zone: { on: true, price: 10, scratch: defaultScratch() },
       monopoly: { perRoll: 5, startCoins: 100, salary: 50, autoOpen: false },
       arcade: { clawGrip: 30, clawPrize: 30, plinko: '80,30,12,5,2,5,12,30,80', molePer: 2, saveDays: 7 }
@@ -692,6 +692,7 @@
     const z = data.settings.zone;
     const pr = Number(z.price) || 10;
     $('inZoneOn').checked = !!z.on;
+    $('inNearMiss').checked = sl.nearMiss !== false;
     $('inMpPer').value = data.settings.monopoly.perRoll;
     const ar = data.settings.arcade;
     $('inClawGrip').value = ar.clawGrip; $('inClawPrize').value = ar.clawPrize;
@@ -1082,6 +1083,7 @@
   $('inMpStart').onchange = (e) => { MP().startCoins = Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 100))); save(); };
   $('inMpSalary').onchange = (e) => { MP().salary = Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 50))); save(); };
   $('inMpAuto').onchange = (e) => { MP().autoOpen = e.target.checked; save(); };
+  $('inNearMiss').onchange = (e) => { data.settings.slot.nearMiss = e.target.checked; save(); };
   const AR = () => data.settings.arcade;
   const clampIn = (v, lo, hi, d) => { const n = Number(v); return Math.max(lo, Math.min(hi, Math.round(v === '' || !Number.isFinite(n) ? d : n))); };
   $('inClawGrip').onchange = (e) => { AR().clawGrip = clampIn(e.target.value, 0, 100, 30); save(); renderSlotSettings(); };
@@ -1091,6 +1093,12 @@
     if (arr.length !== 9) toast('彈珠台要填 9 個數字（左到右）', false);
     else AR().plinko = arr.map((x) => clampIn(x, 0, 999, 0)).join(',');
     save(); renderSlotSettings();
+  };
+  $('btnRaceReset').onclick = async () => {
+    if (!(await confirmBox('確定要把小動物賽跑的冠軍排行榜歸零嗎？（按錯可以復原）', '歸零'))) return;
+    snapshot('重設賽跑排行榜');
+    if (data.arcade) delete data.arcade.race;
+    save(); toast('排行榜已歸零', true);
   };
   $('inMolePer').onchange = (e) => { AR().molePer = clampIn(e.target.value, 1, 20, 2); save(); };
   $('inSaveDays').onchange = (e) => { AR().saveDays = clampIn(e.target.value, 1, 60, 7); save(); };
