@@ -8,11 +8,11 @@ window.Zone = (() => {
   const GAME_LIST = [
     { id: 'slot', ic: '🎰', name: '吃角子老虎機', kind: 'luck', desc: '押 1～3 張，押越大獎越大、越難中' },
     { id: 'scratch', ic: '🎫', name: '刮刮樂', kind: 'luck', desc: '刮出 3 個一樣就中獎' },
-    { id: 'plinko', ic: '🔵', name: '彈珠台', kind: 'luck', desc: '珠子撞釘子，看看會掉進哪一格' },
+    { id: 'plinko', ic: '🚀', name: '彈珠台', kind: 'luck', desc: '太空彈珠台！發射珠子，看會掉進哪一格' },
     { id: 'claw', ic: '🧸', name: '夾娃娃機', kind: 'luck', desc: '自己移動爪子夾娃娃' },
     { id: 'hilo', ic: '🃏', name: '猜大小', kind: 'luck', desc: '猜對獎金翻倍，見好就收' },
     { id: 'race', ic: '🏁', name: '小動物賽跑', kind: 'luck', desc: '全班一起押，冷門獎比較大' },
-    { id: 'mole', ic: '🔨', name: '打地鼠', kind: 'skill', desc: '20 秒，靠反應得分' },
+    { id: 'mole', ic: '🔨', name: '打地鼠', kind: 'skill', desc: '20 秒，越來越快，最後 10 秒超快！' },
     { id: 'memory', ic: '🧠', name: '翻牌記憶配對', kind: 'skill', desc: '翻錯越少，分數越多' }
   ];
 

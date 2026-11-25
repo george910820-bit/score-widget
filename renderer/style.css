@@ -762,34 +762,9 @@ body.is-display .mp-title { font-size: 1.6em; }
 body.is-display .go.small { height: 64px; font-size: 1.6em; padding: 0 26px; }
 
 /* 彈珠台 */
-.pl-cv { display: block; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
 
 /* 夾娃娃機 */
-.cm { display: flex; flex-direction: column; align-items: center; height: 100%; max-height: 520px; aspect-ratio: 3 / 4; max-width: 100%; }
-.cm-top { width: 100%; background: #ff6fa8; border-radius: 18px 18px 0 0; text-align: center; padding: 6px; font-weight: bold; color: #fff; letter-spacing: 2px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.15); }
-.cm-box { position: relative; flex: 1; width: 100%; background: linear-gradient(180deg, rgba(200,235,255,.25), rgba(200,235,255,.08)); border: 8px solid #ff6fa8; border-top: 0; border-bottom: 0; overflow: hidden; }
-.cm-rail { position: absolute; left: 0; right: 0; top: 6px; height: 6px; background: #c9c9d6; }
-.cm-claw { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 2; }
-.cm-claw.sway .cm-head { animation: sway .5s ease-in-out infinite alternate; }
-@keyframes sway { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
-.cm-rope { width: 3px; height: 14px; background: #ddd; }
-.cm-head { position: relative; width: 34px; height: 16px; background: #c0c0cc; border-radius: 8px 8px 4px 4px; transform-origin: top center; }
-.cm-head i { position: absolute; top: 10px; width: 6px; height: 24px; background: #9a9aa8; border-radius: 3px; transition: transform .35s; }
-.cm-head i.l { left: 2px; transform: rotate(18deg); transform-origin: top center; }
-.cm-head i.r { right: 2px; transform: rotate(-18deg); transform-origin: top center; }
-.cm-claw.open .cm-head i.l { transform: rotate(42deg); }
-.cm-claw.open .cm-head i.r { transform: rotate(-42deg); }
-.cm-held { font-size: 40px; line-height: 1; margin-top: -4px; min-height: 0; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
-.cm-held.fall { animation: fall .6s ease-in forwards; }
-.cm-held.drop { animation: fall .5s ease-in forwards; }
 @keyframes fall { to { transform: translateY(160px) rotate(40deg); opacity: 0; } }
-.cm-chute { position: absolute; left: 0; bottom: 0; width: 17%; height: 32%; background: rgba(0,0,0,.35); border-right: 4px solid #ff6fa8; border-top: 4px solid #ff6fa8; display: flex; align-items: flex-end; justify-content: center; font-size: .75em; padding-bottom: 6px; color: #ffd1e3; }
-.cm-prizes { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; }
-.cm-p { position: absolute; bottom: 6px; transform: translateX(-50%); font-size: 44px; line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,.4)); font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
-.cm-base { width: 100%; height: 54px; background: #ff6fa8; border-radius: 0 0 18px 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 0 #c2427a; }
-.cm-slot { background: #3b0f27; border-radius: 8px; padding: 2px 14px; }
-body.is-display .cm-p { font-size: 70px; }
-body.is-display .cm-held { font-size: 64px; }
 
 /* 猜大小 */
 .hl { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(100%, 560px); }
@@ -845,8 +820,6 @@ body.is-display .cm-held { font-size: 64px; }
 .mo-time i { display: block; height: 100%; width: 100%; background: #8bc34a; }
 .mo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: min(100%, 62vh); touch-action: manipulation; }
 .hole { position: relative; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(ellipse at 50% 70%, #2a1606 45%, #6b4520 47%, #6b4520 60%, transparent 62%); overflow: hidden; cursor: pointer; }
-.hole .mole { position: absolute; left: 50%; bottom: -70%; transform: translateX(-50%); font-size: clamp(40px, 9vh, 80px); transition: bottom .12s; pointer-events: none; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
-.hole.up .mole { bottom: 18%; }
 .hole.hit .mole { transform: translateX(-50%) scale(.8) rotate(-15deg); filter: brightness(1.6); }
 .hole.gold { box-shadow: 0 0 20px #ffd54f; }
 
@@ -875,3 +848,107 @@ body.is-display .cm-held { font-size: 64px; }
 .sv-bar { flex: 1; height: 8px; background: rgba(255,255,255,.2); border-radius: 4px; overflow: hidden; }
 .sv-bar i { display: block; height: 100%; background: #ffd54f; }
 .arcade-overlay.pl .ar-result { bottom: auto; top: 62px; }
+
+/* 太空彈珠台 */
+.pb { display: flex; align-items: center; justify-content: center; gap: 18px; width: 100%; height: 100%; }
+.pb.narrow { flex-direction: column; gap: 6px; }
+.pb.narrow .pb-side { flex-direction: row; width: 100%; max-width: 560px; flex-wrap: wrap; }
+.pb.narrow .pb-hist, .pb.narrow .pb-logo { display: none; }
+.pb-tablewrap { perspective: 1100px; }
+.pb-table { transform: rotateX(12deg); transform-origin: 50% 100%; border-radius: 26px; padding: 10px; background: linear-gradient(180deg, #3b3f58, #1b1d2b); box-shadow: 0 24px 50px rgba(0,0,0,.7), inset 0 0 0 3px #555a7a; }
+.pb-table.shake { animation: pbShake .18s ease-out; }
+@keyframes pbShake { 0% { transform: rotateX(12deg) translate(0,0); } 30% { transform: rotateX(12deg) translate(-4px,2px) rotate(-.6deg); } 60% { transform: rotateX(12deg) translate(4px,-1px) rotate(.5deg); } 100% { transform: rotateX(12deg) translate(0,0); } }
+.pb-cv { display: block; border-radius: 18px; touch-action: manipulation; cursor: pointer; }
+.pb-side { width: 220px; display: flex; flex-direction: column; gap: 10px; }
+.pb-logo { position: relative; text-align: center; background: radial-gradient(circle at 30% 30%, #4a2b8a, #1a0f3a); border: 3px solid #7c4dff; border-radius: 16px; padding: 12px 6px 10px; box-shadow: 0 0 18px rgba(124,77,255,.6); }
+.pb-logo i { font-size: 36px; font-style: normal; display: block; animation: pbFloat 2.4s ease-in-out infinite; }
+@keyframes pbFloat { 50% { transform: translateY(-6px) rotate(-8deg); } }
+.pb-logo span { display: block; color: #ff80ab; font-weight: bold; letter-spacing: 6px; }
+.pb-logo b { display: block; font-size: 1.7em; background: linear-gradient(180deg, #fff59d, #ff9800); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 3px; filter: drop-shadow(0 2px 0 #4a148c); }
+.pb-leds { display: flex; gap: 8px; }
+.pb-led { flex: 1; background: #000; border: 2px solid #3949ab; border-radius: 10px; padding: 4px 8px; display: flex; justify-content: space-between; align-items: center; }
+.pb-led span { color: #ff5252; font-size: .78em; font-weight: bold; }
+.pb-led b { color: #69f0ae; font-family: "Consolas", "Courier New", monospace; font-size: 1.6em; text-shadow: 0 0 8px #00e676; }
+.pb-msg { background: #000; border: 2px solid #3949ab; border-radius: 10px; padding: 10px; color: #b388ff; font-weight: bold; font-size: 1.05em; text-align: center; min-height: 1.6em; text-shadow: 0 0 6px #7c4dff; flex: 1; }
+.pb-hist { background: rgba(0,0,0,.5); border: 2px solid #3949ab; border-radius: 10px; padding: 8px; }
+.pb-hl { font-size: .78em; color: #c5cae9; text-align: center; margin-bottom: 4px; }
+.pb-bars { display: flex; align-items: flex-end; gap: 3px; height: 90px; }
+.pb-bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.pb-bar i { display: block; width: 100%; min-height: 2px; background: linear-gradient(180deg, #ffd740, #ff6d00); border-radius: 3px 3px 0 0; }
+.pb-bar.on i { background: #fff; box-shadow: 0 0 10px #fff; }
+.pb-bar b { font-size: .62em; color: #fff; }
+.pb-bar s { text-decoration: none; font-size: .58em; color: #9fa8da; }
+.arcade-overlay.pl.busy .lotto-actions { opacity: 1; pointer-events: auto; }
+.arcade-overlay.pl.busy .pb-go { opacity: .35; pointer-events: none; }
+.pb-fl { background: #ff7043; box-shadow: 0 4px 0 #bf360c; touch-action: none; user-select: none; }
+.pb-fl:active { transform: translateY(3px); }
+body.is-display .pb-side { width: 300px; font-size: 1.25em; }
+
+/* 夾娃娃機（玩具機台） */
+.ck { display: flex; flex-direction: column; align-items: stretch; height: 100%; max-height: 640px; aspect-ratio: 5 / 7; max-width: 100%; filter: drop-shadow(0 14px 24px rgba(0,0,0,.45)); }
+.ck-top { position: relative; background: linear-gradient(180deg, #ffb3d1, #ff6fa8); border-radius: 50% 50% 10px 10px / 60% 60% 10px 10px; padding: 10px 8% 8px; text-align: center; border: 4px solid #ff4f93; }
+.ck-bulbs { display: flex; justify-content: space-between; margin-bottom: 2px; }
+.ck-bulbs i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); animation: ckBlink .8s var(--d) infinite alternate; }
+@keyframes ckBlink { to { opacity: .25; box-shadow: none; } }
+.ck-title span { display: inline-block; font-size: clamp(20px, 4.2vh, 38px); font-weight: 900; color: #fff; -webkit-text-stroke: 1.5px #c2185b; text-shadow: 0 3px 0 #ad1457; margin: 0 2px; }
+.ck-title span:nth-child(1) { color: #ffeb3b; transform: rotate(-8deg); }
+.ck-title span:nth-child(2) { color: #69f0ae; transform: translateY(-3px); }
+.ck-title span:nth-child(3) { color: #40c4ff; transform: translateY(-3px); }
+.ck-title span:nth-child(4) { color: #ff9100; transform: rotate(8deg); }
+.ck-body { flex: 1; display: flex; min-height: 0; background: #ff6fa8; }
+.ck-post { width: 7%; background: linear-gradient(90deg, #ff4f93, #ff8fc0, #ff4f93); display: flex; flex-direction: column; justify-content: space-around; align-items: center; }
+.ck-post i { font-style: normal; color: var(--c); font-size: clamp(10px, 2vh, 18px); text-shadow: 0 0 8px var(--c); animation: ckBlink .6s var(--d) infinite alternate; }
+.ck-glass { position: relative; flex: 1; background: linear-gradient(180deg, #2a1a5e 0%, #3d2a80 60%, #2a1a5e 100%); overflow: hidden; box-shadow: inset 0 0 30px rgba(0,0,0,.6); }
+.ck-gantry { position: absolute; left: 0; right: 0; top: 0; height: 10px; background: linear-gradient(180deg, #fff59d, #fbc02d); box-shadow: 0 2px 4px rgba(0,0,0,.4); z-index: 3; }
+.ck-shine { position: absolute; inset: 0; background: linear-gradient(115deg, rgba(255,255,255,.18) 0 8%, transparent 8% 20%, rgba(255,255,255,.1) 20% 23%, transparent 23%); pointer-events: none; z-index: 4; }
+.ck-hole { position: absolute; left: 0; bottom: 0; width: 18%; height: 40%; background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,.15)); border: 3px solid #fff; border-bottom: 0; border-left: 0; border-radius: 0 8px 0 0; z-index: 2; }
+.ck-pile { position: absolute; left: 18%; right: 0; bottom: 0; height: 30%; }
+.ck-pile i { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: radial-gradient(circle at 32% 30%, #fff 0 12%, var(--c) 45%, rgba(0,0,0,.45) 100%); transform: translateX(-50%); }
+.cm-prizes { position: absolute; left: 0; right: 0; bottom: 18%; height: 20%; z-index: 1; }
+.cm-p { position: absolute; bottom: 0; transform: translateX(-50%); font-size: clamp(30px, 6.5vh, 56px); line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,.5)); font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.cm-claw { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; z-index: 3; }
+.cm-rope { width: 4px; height: 14px; background: repeating-linear-gradient(180deg, #ddd 0 4px, #999 4px 6px); }
+.ck-claw { position: relative; width: 56px; height: 54px; transform-origin: top center; }
+.cm-claw.sway .ck-claw { animation: sway .5s ease-in-out infinite alternate; }
+@keyframes sway { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+.ck-hub { position: absolute; left: 50%; top: 0; width: 30px; height: 16px; transform: translateX(-50%); background: radial-gradient(circle at 40% 30%, #fff59d, #fbc02d 60%, #f57f17); border-radius: 8px 8px 12px 12px; z-index: 2; box-shadow: 0 2px 3px rgba(0,0,0,.4); }
+.ck-claw .p { position: absolute; top: 10px; width: 9px; height: 40px; background: linear-gradient(90deg, #fbc02d, #fff176, #f9a825); border-radius: 0 0 10px 10px; transform-origin: top center; transition: transform .35s; z-index: 2; }
+.ck-claw .p.l { left: 12px; transform: rotate(14deg); border-radius: 0 0 12px 2px; }
+.ck-claw .p.r { right: 12px; transform: rotate(-14deg); border-radius: 0 0 2px 12px; }
+.ck-claw .p.m { left: 50%; margin-left: -4px; height: 34px; opacity: .8; z-index: 0; }
+.cm-claw.open .ck-claw .p.l { transform: rotate(40deg); }
+.cm-claw.open .ck-claw .p.r { transform: rotate(-40deg); }
+.cm-held { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); font-size: clamp(30px, 6vh, 50px); line-height: 1; z-index: 1; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.cm-held.fall, .cm-held.drop { animation: fall .55s ease-in forwards; }
+@keyframes fall { to { transform: translateX(-50%) translateY(180px) rotate(40deg); opacity: 0; } }
+.ck-panel { display: flex; align-items: stretch; gap: 8px; background: linear-gradient(180deg, #ff8fc0, #ff4f93); padding: 10px 8%; border-radius: 0 0 18px 18px; border: 4px solid #ff4f93; border-top: 0; height: 22%; min-height: 80px; }
+.ck-out { width: 30%; background: linear-gradient(180deg, rgba(255,241,118,.95), rgba(255,213,79,.8)); border: 3px solid #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #8d6e00; font-weight: bold; font-size: .85em; box-shadow: inset 0 0 10px rgba(0,0,0,.2); }
+.ck-out b { font-size: clamp(34px, 7vh, 60px); animation: ckPop .5s cubic-bezier(.3,1.6,.5,1); font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+@keyframes ckPop { from { transform: scale(0) translateY(-30px); } }
+.ck-out.has { box-shadow: 0 0 20px #fff176, inset 0 0 10px rgba(0,0,0,.2); }
+.ck-deck { flex: 1; position: relative; background: linear-gradient(180deg, #ffd1e4, #ffa6cb); border-radius: 12px; transform: perspective(300px) rotateX(18deg); display: flex; align-items: center; justify-content: space-around; padding: 0 8px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.12); }
+.ck-stick { position: relative; width: 34px; height: 34px; border-radius: 50%; background: #333; box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
+.ck-stick i { position: absolute; left: 50%; bottom: 50%; width: 6px; height: 30px; margin-left: -3px; background: #bdbdbd; transform-origin: bottom center; transition: transform .15s; }
+.ck-stick i::after { content: ''; position: absolute; left: 50%; top: -12px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ff8a80, #d50000); }
+.ck-stick.tl i { transform: rotate(-25deg); }
+.ck-stick.tr i { transform: rotate(25deg); }
+.ck-btn { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff59d, #fbc02d); box-shadow: 0 4px 0 #c49000; transition: transform .1s, box-shadow .1s; }
+.ck-btn.down { transform: translateY(3px); box-shadow: 0 1px 0 #c49000; }
+.ck-btn.b2 { background: radial-gradient(circle at 35% 30%, #b9f6ca, #00c853); box-shadow: 0 4px 0 #00873a; }
+.ck-btn.b3 { background: radial-gradient(circle at 35% 30%, #b3e5fc, #0288d1); box-shadow: 0 4px 0 #01579b; }
+.ck-coin { background: #3b0f27; color: #fff; border-radius: 6px; padding: 2px 8px; font-size: .9em; }
+
+/* 打地鼠（越來越快） */
+.mo-sec { font-weight: bold; min-width: 2em; text-align: right; }
+.mo.fever .mo-time i { background: #ff1744; animation: ckBlink .25s infinite alternate; }
+.mo.fever .mo-grid { animation: moShake .3s infinite; }
+@keyframes moShake { 50% { transform: translate(1px, -1px); } }
+.mo-intro b { color: #ffd54f; }
+.hole .mole { position: absolute; left: 50%; bottom: -70%; transform: translateX(-50%); font-size: clamp(40px, 9vh, 80px); transition: bottom .1s; pointer-events: none; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.hole.up .mole { bottom: 18%; }
+.mo.fever .mo-hud::after { content: '⚡ 超快！'; color: #ff5252; font-weight: bold; animation: ckBlink .3s infinite alternate; }
+.pb.narrow .pb-side { gap: 6px; flex-wrap: nowrap; }
+.pb.narrow .pb-leds { flex: 0 0 auto; }
+.pb.narrow .pb-led { padding: 2px 6px; }
+.pb.narrow .pb-led b { font-size: 1.2em; }
+.pb.narrow .pb-msg { padding: 4px 8px; font-size: .9em; }

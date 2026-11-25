@@ -276,6 +276,10 @@ window.Sound = (() => {
     },
     coins() { if (!on()) return; for (let i = 0; i < 16; i++) chime(1900 + Math.random() * 1300, i * 0.055, 0.35, 0.09, 0.4); },
 
+    // ---------- 彈珠台 ----------
+    bumper(n = 0) { if (!on()) return; const f = [660, 740, 880, 990, 1175][n % 5]; tone(f, 0, 0.09, 'square', 0.07, f * 1.5, 0.12); tone(f * 2, 0.02, 0.12, 'sine', 0.06, null, 0.2); },
+    flipper() { if (!on()) return; noiseHit(0, 0.05, 900, 300, 'lowpass', 0.25, 1, 0.05); tone(140, 0, 0.08, 'square', 0.1, 90, 0.05); },
+    launch() { if (!on()) return; noiseHit(0, 0.25, 400, 2400, 'bandpass', 0.18, 2, 0.1); tone(220, 0, 0.25, 'sawtooth', 0.06, 660, 0.1); },
     // ---------- 刮刮樂 ----------
     scratch() { if (!on()) return; noiseHit(0, 0.06, 2600 + Math.random() * 1500, null, 'bandpass', 0.07, 2.5, 0); },
     reveal(match) {

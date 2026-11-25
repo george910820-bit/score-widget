@@ -81,7 +81,7 @@ window.Arcade = (() => {
     W.save();
     W.renderAll();
   }
-  const NOTE = { slot: '落在第幾格(0起)', tries: '這次連玩第幾次', rounds: '猜對幾關', lost: '輸掉的獎金', closed: '中途關掉', racer: '押', winner: '贏的是', hits: '打中', mistakes: '翻錯', pairs: '幾對' };
+  const NOTE = { slot: '落在第幾格(0起)', tries: '這次連玩第幾次', rounds: '猜對幾關', lost: '輸掉的獎金', closed: '中途關掉', racer: '押', winner: '贏的是', hits: '打中', mistakes: '翻錯', pairs: '幾對', flips: '按擋板次數' };
   const ticketWorth = (n) => `${n} 張入場券（值 ${n * price()} 點）`;
 
   // =====================================================================
@@ -100,105 +100,189 @@ window.Arcade = (() => {
     return ev;
   }
   function plinko(student, back) {
-    const sh = shell({ student, icon: '🔵', title: '彈珠台', bg: '#1b2a4a', back });
+    const sh = shell({ student, icon: '🚀', title: '太空彈珠台', bg: '#05060f', back });
     sh.root.classList.add('pl');
-    sh.stage.innerHTML = '<canvas class="pl-cv"></canvas>';
+    sh.stage.innerHTML = `
+      <div class="pb">
+        <div class="pb-tablewrap"><div class="pb-table" id="pbTable"><canvas class="pb-cv"></canvas></div></div>
+        <div class="pb-side">
+          <div class="pb-logo"><i>🚀</i><span>太空</span><b>彈珠台</b></div>
+          <div class="pb-leds"><div class="pb-led"><span>BALL</span><b id="pbBall">1</b></div><div class="pb-led"><span>得分</span><b id="pbScore">0</b></div></div>
+          <div class="pb-msg" id="pbMsg">等待發射</div>
+          <div class="pb-hist"><div class="pb-hl">全班的珠子掉在哪裡</div><div class="pb-bars" id="pbBars"></div></div>
+        </div>
+      </div>`;
     const cv = sh.stage.querySelector('canvas');
+    const table = sh.stage.querySelector('#pbTable');
     const prizes = plinkoPrizes();
     const top = Math.max(...prizes);
-    const H = 420, Wd = 300, cx = 150, dx = 28, dy = 30, y0 = 60, PR = 3.6, BR = 7;
-    const slotY = y0 + PL_ROWS * dy + 6;
-    let g, scale;
+    const Wd = 360, H = 480, cx = 161, dx = 30, y0 = 118, dy = 28, PR = 5, BR = 8;
+    const slotY = 338, laneX = 341;
+    const COLORS = ['#00e5ff', '#ff4081', '#ffd740', '#69f0ae'];
     const hist = () => { const d = W.data; if (!d.arcade) d.arcade = {}; if (!Array.isArray(d.arcade.plinkoHist) || d.arcade.plinkoHist.length !== PL_ROWS + 1) d.arcade.plinkoHist = new Array(PL_ROWS + 1).fill(0); return d.arcade.plinkoHist; };
-    let ball = null, flash = -1;
-    function size() {
-      const st = sh.stage.getBoundingClientRect();
-      scale = Math.max(0.6, Math.min(st.width / Wd, st.height / H));
-      const dpr = window.devicePixelRatio || 1;
-      cv.style.width = Wd * scale + 'px'; cv.style.height = H * scale + 'px';
-      cv.width = Wd * scale * dpr; cv.height = H * scale * dpr;
-      g = cv.getContext('2d');
-      g.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
-      draw();
-    }
     const pegX = (i, j) => cx + (j - i / 2) * dx;
     const slotX = (k) => cx + (k - PL_ROWS / 2) * dx;
-    function draw() {
-      g.clearRect(0, 0, Wd, H);
-      // 漏斗
-      g.fillStyle = '#24365e'; g.fillRect(4, 4, Wd - 8, H - 8);
-      g.strokeStyle = '#8fb3ff'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(40, 8); g.lineTo(cx - 10, y0 - 22); g.moveTo(Wd - 40, 8); g.lineTo(cx + 10, y0 - 22); g.stroke();
-      // 釘子
+    // 背景星星（固定）
+    const stars = Array.from({ length: 70 }, () => ({ x: Math.random() * 322, y: Math.random() * H, r: Math.random() * 1.3 + 0.3, a: Math.random() }));
+    let g, ball = null, flash = -1, plunge = 0, balls = 0, flips = 0, jitter = 0, raf = 0;
+    const lit = {};
+    const fl = { L: { a: 0, t: 0 }, R: { a: 0, t: 0 } };
+    function size() {
+      const st = sh.stage.getBoundingClientRect();
+      const side = st.width > 620 ? 230 : 0;
+      const s = Math.max(0.45, Math.min((st.width - side - 30) / Wd, (st.height - (side ? 30 : 90)) / H));
+      const dpr = window.devicePixelRatio || 1;
+      cv.style.width = Wd * s + 'px'; cv.style.height = H * s + 'px';
+      cv.width = Wd * s * dpr; cv.height = H * s * dpr;
+      g = cv.getContext('2d');
+      g.setTransform(s * dpr, 0, 0, s * dpr, 0, 0);
+      sh.stage.querySelector('.pb').classList.toggle('narrow', !side);
+    }
+    function rr(x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+    function drawFlipper(px, py, dir, ang) {
+      g.save(); g.translate(px, py); g.rotate(dir * ang);
+      g.beginPath(); g.moveTo(0, -8); g.lineTo(dir * 60, -3); g.arc(dir * 60, 0, 3, -Math.PI / 2, Math.PI / 2, dir < 0); g.lineTo(0, 8); g.arc(0, 0, 8, Math.PI / 2, -Math.PI / 2, dir > 0); g.closePath();
+      const gr = g.createLinearGradient(0, -8, 0, 8); gr.addColorStop(0, '#ff8a50'); gr.addColorStop(1, '#c62828');
+      g.fillStyle = gr; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.stroke();
+      g.fillStyle = '#ffeb3b'; g.beginPath(); g.arc(0, 0, 3.5, 0, Math.PI * 2); g.fill();
+      g.restore();
+    }
+    function draw(now) {
+      // 桌面
+      const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#1a1050'); bg.addColorStop(0.55, '#0d1b4a'); bg.addColorStop(1, '#120a2e');
+      g.fillStyle = '#05060f'; g.fillRect(0, 0, Wd, H);
+      g.save();
+      g.beginPath(); g.moveTo(4, H - 4); g.lineTo(4, 120); g.bezierCurveTo(4, 20, 120, 8, 200, 8); g.bezierCurveTo(300, 8, 356, 40, 356, 120); g.lineTo(356, H - 4); g.closePath();
+      g.fillStyle = bg; g.fill(); g.clip();
+      // 星雲與星球
+      const neb = g.createRadialGradient(170, 230, 10, 170, 230, 180); neb.addColorStop(0, 'rgba(124,77,255,.35)'); neb.addColorStop(1, 'rgba(124,77,255,0)');
+      g.fillStyle = neb; g.fillRect(0, 0, Wd, H);
+      const pl = g.createRadialGradient(60, 70, 4, 70, 80, 34); pl.addColorStop(0, '#ffb74d'); pl.addColorStop(1, 'rgba(230,81,0,.0)');
+      g.fillStyle = pl; g.beginPath(); g.arc(70, 80, 34, 0, Math.PI * 2); g.fill();
+      stars.forEach((st) => { g.fillStyle = `rgba(255,255,255,${0.35 + 0.5 * Math.abs(Math.sin(now / 900 + st.a * 6))})`; g.fillRect(st.x, st.y, st.r, st.r); });
+      // 中間的發光圓圈
+      g.strokeStyle = 'rgba(0,229,255,.25)'; g.lineWidth = 2;
+      for (let r = 40; r <= 120; r += 40) { g.beginPath(); g.arc(cx, 220, r, 0, Math.PI * 2); g.stroke(); }
+      g.restore();
+      // 外框（霓虹）
+      g.lineWidth = 4; g.strokeStyle = '#7c4dff'; g.shadowColor = '#7c4dff'; g.shadowBlur = 12;
+      g.beginPath(); g.moveTo(4, H - 4); g.lineTo(4, 120); g.bezierCurveTo(4, 20, 120, 8, 200, 8); g.bezierCurveTo(300, 8, 356, 40, 356, 120); g.lineTo(356, H - 4); g.stroke();
+      // 發射道
+      g.strokeStyle = '#00e5ff'; g.shadowColor = '#00e5ff'; g.lineWidth = 3;
+      g.beginPath(); g.moveTo(326, H - 4); g.lineTo(326, 110); g.stroke();
+      g.shadowBlur = 0;
+      // 彈簧
+      const spTop = 446 + plunge * 22;
+      g.fillStyle = '#9e9e9e'; for (let y = spTop; y < H - 6; y += 5) g.fillRect(laneX - 9, y, 18, 2);
+      g.fillStyle = '#e0e0e0'; rr(laneX - 11, spTop - 8, 22, 8, 3); g.fill();
+      // 釘子（彈跳器）
       for (let i = 0; i < PL_ROWS; i++) for (let j = 0; j <= i; j++) {
-        g.fillStyle = '#e8eef9'; g.beginPath(); g.arc(pegX(i, j), y0 + i * dy, PR, 0, Math.PI * 2); g.fill();
+        const x = pegX(i, j), y = y0 + i * dy, c = COLORS[(i + j) % 4];
+        const on = lit[i + ',' + j] && now - lit[i + ',' + j] < 260;
+        g.shadowColor = c; g.shadowBlur = on ? 22 : 8;
+        g.strokeStyle = c; g.lineWidth = on ? 3 : 2;
+        g.beginPath(); g.arc(x, y, on ? PR + 4 : PR + 2, 0, Math.PI * 2); g.stroke();
+        g.fillStyle = on ? '#fff' : '#cfd8dc'; g.beginPath(); g.arc(x, y, PR - 1, 0, Math.PI * 2); g.fill();
       }
-      // 格子與獎項
-      const hs = hist(), maxH = Math.max(1, ...hs);
+      g.shadowBlur = 0;
+      // 格子
+      const hs = hist();
       for (let k = 0; k <= PL_ROWS; k++) {
-        const x = slotX(k) - dx / 2;
-        g.fillStyle = k === flash ? '#ffe082' : (prizes[k] === top ? '#d4a017' : (k % 2 ? '#3b5bdb' : '#4263eb'));
-        g.fillRect(x + 1, slotY, dx - 2, 34);
-        g.fillStyle = prizes[k] === top && k !== flash ? '#3b2400' : (k === flash ? '#3b2400' : '#fff');
-        g.font = 'bold 11px "Microsoft JhengHei UI", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(String(prizes[k]), slotX(k), slotY + 17);
-        // 落點分布（機率看得見）
-        const bh = hs[k] / maxH * 44;
-        g.fillStyle = 'rgba(255,213,79,.85)';
-        g.fillRect(x + 4, slotY + 40 + (44 - bh), dx - 8, bh);
-        g.fillStyle = '#cfe0ff'; g.font = '9px sans-serif';
-        g.fillText(String(hs[k]), slotX(k), slotY + 92);
+        const x = slotX(k) - dx / 2 + 1, isTop = prizes[k] === top;
+        const c = k === flash ? '#ffffff' : isTop ? '#ffd740' : COLORS[k % 4];
+        g.shadowColor = c; g.shadowBlur = k === flash ? 24 : 6;
+        g.strokeStyle = c; g.lineWidth = 2; rr(x, slotY, dx - 2, 40, 5); g.stroke();
+        g.fillStyle = k === flash ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.35)'; g.fill();
+        g.shadowBlur = 0;
+        g.fillStyle = isTop ? '#ffd740' : '#fff'; g.font = 'bold 12px "Microsoft JhengHei UI", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(String(prizes[k]), slotX(k), slotY + 20);
       }
-      g.fillStyle = '#9fb7e6'; g.font = '10px "Microsoft JhengHei UI", sans-serif'; g.textAlign = 'left';
-      g.fillText('黃色長條：全班丟過的珠子掉在哪裡', 10, H - 8);
+      // 下方：導軌與擋板
+      g.strokeStyle = '#00e5ff'; g.lineWidth = 3; g.shadowColor = '#00e5ff'; g.shadowBlur = 8;
+      g.beginPath(); g.moveTo(4, 392); g.lineTo(70, 412); g.moveTo(326, 392); g.lineTo(252, 412); g.stroke();
+      g.shadowBlur = 0;
+      ['L', 'R'].forEach((k) => { const f = fl[k]; f.a += ((now < f.t ? 1 : 0) - f.a) * 0.45; });
+      drawFlipper(70, 412, 1, 0.5 - fl.L.a * 0.9);
+      drawFlipper(252, 412, -1, 0.5 - fl.R.a * 0.9);
+      g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '10px "Microsoft JhengHei UI", sans-serif'; g.textAlign = 'center';
+      g.fillText('按擋板讓台子動起來！', cx, 462);
+      // 珠子
       if (ball) {
-        g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.arc(ball.x + 2, ball.y + 3, BR, 0, Math.PI * 2); g.fill();
-        const gr = g.createRadialGradient(ball.x - 2, ball.y - 3, 1, ball.x, ball.y, BR);
-        gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#9aa7b8');
-        g.fillStyle = gr; g.beginPath(); g.arc(ball.x, ball.y, BR, 0, Math.PI * 2); g.fill();
+        jitter *= 0.85;
+        const bx = ball.x + jitter * Math.sin(now / 18), by = ball.y;
+        g.fillStyle = 'rgba(0,229,255,.18)'; g.beginPath(); g.arc(bx, by, BR + 6, 0, Math.PI * 2); g.fill();
+        const gr = g.createRadialGradient(bx - 3, by - 3, 1, bx, by, BR);
+        gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#cfd8dc'); gr.addColorStop(1, '#607d8b');
+        g.fillStyle = gr; g.beginPath(); g.arc(bx, by, BR, 0, Math.PI * 2); g.fill();
       }
     }
-    const anim = (fromX, fromY, toX, toY, ms, arcH) => new Promise((res) => {
+    const loop = (now) => { if (sh.closed) return; draw(now); raf = requestAnimationFrame(loop); };
+    function renderSide(last) {
+      const hs = hist(), maxH = Math.max(1, ...hs), total = hs.reduce((a, b) => a + b, 0);
+      sh.stage.querySelector('#pbBars').innerHTML = hs.map((h, k) => `<div class="pb-bar${k === flash ? ' on' : ''}"><i style="height:${Math.round(h / maxH * 100)}%"></i><b>${prizes[k]}</b><s>${h}</s></div>`).join('');
+      sh.stage.querySelector('#pbBall').textContent = balls || 1;
+      if (last !== undefined) {
+        const el = sh.stage.querySelector('#pbScore'); let n = 0;
+        const step = () => { n = Math.min(last, n + Math.max(1, Math.ceil(last / 12))); el.textContent = n; if (n < last) setTimeout(step, 40); };
+        step();
+      }
+      sh.stage.querySelector('.pb-hl').textContent = `全班丟過 ${total} 顆：掉在哪裡？`;
+    }
+    const msg = (t) => { sh.stage.querySelector('#pbMsg').textContent = t; };
+    const path = (fn, ms) => new Promise((res) => {
       const t0 = performance.now();
-      const step = (now) => {
-        if (sh.closed) { res(); return; }
-        const p = Math.min(1, (now - t0) / ms);
-        ball = { x: fromX + (toX - fromX) * p, y: fromY + (toY - fromY) * p * p - Math.sin(p * Math.PI) * arcH };
-        draw();
-        if (p < 1) requestAnimationFrame(step); else res();
-      };
+      const step = (now) => { if (sh.closed) { res(); return; } const p = Math.min(1, (now - t0) / ms); ball = fn(p); if (p < 1) requestAnimationFrame(step); else res(); };
       requestAnimationFrame(step);
     });
-    async function drop(side) {
+    const hop = (x0, y0_, x1, y1, ms, h) => path((p) => ({ x: x0 + (x1 - x0) * p, y: y0_ + (y1 - y0_) * p - Math.sin(p * Math.PI) * h }), ms);
+    function flip(side) {
+      fl[side].t = performance.now() + 140;
+      Sound.flipper();
+      if (ball && sh.busy) { flips++; jitter = 4; }
+      table.classList.remove('shake'); void table.offsetWidth; table.classList.add('shake');
+      // 隨便亮幾顆彈跳器（只是特效，不會改變結果）
+      for (let n = 0; n < 3; n++) { const i = Math.floor(Math.random() * PL_ROWS); lit[i + ',' + Math.floor(Math.random() * (i + 1))] = performance.now(); }
+    }
+    async function launch() {
       if (sh.busy) return;
       if (!spend(student, 1, '彈珠台')) return;
-      Research.decide(student, '彈珠台', { L: '從左邊放', M: '從中間放', R: '從右邊放' }[side], { cost: price(), ev: plinkoEV() - price(), prize: top, note: '每一格機率固定，從哪裡放都一樣' });
-      sh.setBusy(true); sh.sub(); FX.clear(sh.root);
-      const startX = side === 'L' ? 60 : side === 'R' ? Wd - 60 : cx;
-      Sound.whoosh();
-      await anim(startX, 12, cx, y0 - PR - BR, 420, 0);
+      Research.decide(student, '彈珠台', '發射', { cost: price(), ev: plinkoEV() - price(), prize: top, note: '每一格機率固定（二項分布）；擋板只是好玩，不影響結果' });
+      sh.setBusy(true); sh.sub(); FX.clear(sh.root); sh.hideResult();
+      flash = -1; balls++; flips = 0; renderSide();
+      msg('拉彈簧…');
+      ball = { x: laneX, y: 434 };
+      for (let i = 0; i <= 10; i++) { plunge = i / 10; await sleep(25); }
+      Sound.launch(); msg('發射！快按擋板！');
+      plunge = 0;
+      await path((p) => ({ x: laneX, y: 434 - p * 330 }), 380);
+      // 沿著上方弧線滑到中間
+      await path((p) => { const a = p * Math.PI * 0.5; return { x: cx + Math.cos(a) * (laneX - cx), y: 104 - Math.sin(a) * 66 }; }, 420);
+      await hop(cx, 38, cx, y0 - PR - BR, 300, 0);
       let j = 0;
       for (let i = 0; i < PL_ROWS; i++) {
-        Sound.tick();
+        lit[i + ',' + j] = performance.now();
+        Sound.bumper(i);
         const right = Math.random() < 0.5;
         const x0 = pegX(i, j), yA = y0 + i * dy - PR - BR;
-        const slow = i >= PL_ROWS - 2 ? 1.9 : 1;
+        const slow = i >= PL_ROWS - 2 ? 1.8 : 1;
         if (i < PL_ROWS - 1) {
           const nj = j + (right ? 1 : 0);
-          await anim(x0, yA, pegX(i + 1, nj), y0 + (i + 1) * dy - PR - BR, 170 * slow, 9);
+          await hop(x0, yA, pegX(i + 1, nj), y0 + (i + 1) * dy - PR - BR, 190 * slow, 12);
           j = nj;
         } else {
           const k = j + (right ? 1 : 0);
-          await anim(x0, yA, slotX(k), slotY + 14, 320 * slow, 10);
+          await hop(x0, yA, slotX(k), slotY + 20, 330 * slow, 12);
           j = k;
         }
         if (sh.closed) return;
       }
       Sound.clunk();
-      const k = j, prize = plinkoPrizes()[k];
+      const k = j, prize = prizes[k];
       hist()[k]++;
-      flash = k; draw();
-      record(student, '彈珠台', 1, prize, { slot: k });
+      flash = k;
+      record(student, '彈珠台', 1, prize, { slot: k, flips });
+      renderSide(prize);
+      msg(prize >= top ? '大獎！！' : prize > price() ? '賺到了！' : '下一顆會更好？');
       sh.sub();
       if (prize >= top) FX.win(sh.root, 'big', sh.root.querySelector('.fx-behind'));
       else if (prize > price()) FX.win(sh.root, 'small', sh.root.querySelector('.fx-behind'));
@@ -208,20 +292,28 @@ window.Arcade = (() => {
       const total = hist().reduce((a, b) => a + b, 0);
       sh.result(`得到 ${prize} 點`, prize > price(), [
         `用了 ${ticketWorth(1)}，拿到 ${prize} 點`,
-        `全班一共丟了 ${total} 顆，看看黃色長條：中間是不是比較多？`
+        sh.stage.querySelector('.pb').classList.contains('narrow') ? `全班一共丟了 ${total} 顆` : `全班一共丟了 ${total} 顆，看看右邊的長條：中間是不是比較多？`
       ], [
-        ...(student.zoneTickets > 0 ? [{ label: '再丟一顆', primary: true, onClick: () => { flash = -1; ball = null; draw(); } }] : []),
+        ...(student.zoneTickets > 0 ? [{ label: '再丟一顆', primary: true, onClick: () => { ball = null; msg('等待發射'); } }] : []),
         { label: '回遊樂場', onClick: () => sh.close() }
       ]);
     }
-    sh.info('選一個洞口放珠子。珠子會撞到釘子左右亂彈，兩邊的大獎很難掉進去喔！');
-    sh.actions(`<button class="go small" data-side="L">從左邊放</button><button class="go small" data-side="M">從中間放</button><button class="go small" data-side="R">從右邊放</button>`)
-      .querySelectorAll('[data-side]').forEach((b) => b.onclick = () => drop(b.dataset.side));
-    sh.onSpace = () => drop('M');
-    requestAnimationFrame(size);
+    sh.info('按「發射」放出珠子；珠子掉下來的時候，可以一直按左右擋板！');
+    const acts = sh.actions(`<button class="go small pb-fl" data-fl="L">◀ 左擋板</button><button class="go pb-go" id="pbGo">發射！</button><button class="go small pb-fl" data-fl="R">右擋板 ▶</button>`);
+    acts.querySelectorAll('[data-fl]').forEach((b) => { b.onpointerdown = (e) => { e.preventDefault(); flip(b.dataset.fl); }; });
+    acts.querySelector('#pbGo').onclick = launch;
+    cv.onpointerdown = (e) => { const r = cv.getBoundingClientRect(); flip(e.clientX - r.left < r.width / 2 ? 'L' : 'R'); };
+    sh.onKey = (e) => {
+      if (e.type !== 'keydown') return false;
+      if (['ArrowLeft', 'z', 'Z', 'Shift'].includes(e.key)) { flip('L'); return true; }
+      if (['ArrowRight', 'm', 'M', '/'].includes(e.key)) { flip('R'); return true; }
+      return false;
+    };
+    sh.onSpace = launch;
+    requestAnimationFrame(() => { size(); renderSide(); raf = requestAnimationFrame(loop); });
     const rs = () => size();
     window.addEventListener('resize', rs);
-    sh.cleanup.push(() => window.removeEventListener('resize', rs));
+    sh.cleanup.push(() => { window.removeEventListener('resize', rs); cancelAnimationFrame(raf); });
   }
 
   // =====================================================================
@@ -229,29 +321,54 @@ window.Arcade = (() => {
   // =====================================================================
   const PLUSH = ['🧸', '🐻', '🐰', '🦄', '🐥', '🐼', '🐸', '🐶'];
   function claw(student, back) {
-    const sh = shell({ student, icon: '🧸', title: '夾娃娃機', bg: '#4a1d3f', back });
+    const sh = shell({ student, icon: '🧸', title: '夾娃娃機', bg: '#3a1030', back });
+    const BALLC = ['#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#00acc1', '#f06292', '#ffffff'];
+    const pile = Array.from({ length: 70 }, (_, i) => {
+      const row = Math.floor(i / 14);
+      return `<i style="left:${(i % 14) * 7.2 + Math.random() * 4}%;bottom:${row * 5.5 + Math.random() * 2}%;--c:${BALLC[Math.floor(Math.random() * BALLC.length)]};--s:${22 + Math.random() * 10}px"></i>`;
+    }).join('');
+    const bulbs = Array.from({ length: 13 }, (_, i) => `<i style="--d:${(i % 2) * 0.4}s;--c:${['#fff176', '#ff80ab', '#80d8ff'][i % 3]}"></i>`).join('');
+    const stars = (n) => Array.from({ length: n }, (_, i) => `<i style="--d:${(i % 3) * 0.3}s;--c:${['#ff5252', '#ffeb3b', '#69f0ae', '#40c4ff'][i % 4]}">★</i>`).join('');
     sh.stage.innerHTML = `
-      <div class="cm">
-        <div class="cm-top"><span>夾娃娃機</span></div>
-        <div class="cm-box" id="cmBox">
-          <div class="cm-rail"></div>
-          <div class="cm-claw" id="cmClaw"><div class="cm-rope" id="cmRope"></div><div class="cm-head"><i class="l"></i><i class="r"></i></div><div class="cm-held" id="cmHeld"></div></div>
-          <div class="cm-chute">出口</div>
-          <div class="cm-prizes" id="cmPrizes"></div>
+      <div class="ck">
+        <div class="ck-top"><div class="ck-bulbs">${bulbs}</div><div class="ck-title"><span>夾</span><span>娃</span><span>娃</span><span>機</span></div></div>
+        <div class="ck-body">
+          <div class="ck-post">${stars(6)}</div>
+          <div class="ck-glass" id="cmBox">
+            <div class="ck-gantry"></div>
+            <div class="cm-claw" id="cmClaw"><div class="cm-rope" id="cmRope"></div>
+              <div class="ck-claw"><div class="ck-hub"></div><i class="p l"></i><i class="p m"></i><i class="p r"></i><div class="cm-held" id="cmHeld"></div></div></div>
+            <div class="ck-hole"></div>
+            <div class="ck-pile">${pile}</div>
+            <div class="cm-prizes" id="cmPrizes"></div>
+            <div class="ck-shine"></div>
+          </div>
+          <div class="ck-post">${stars(6)}</div>
         </div>
-        <div class="cm-base"><span class="cm-slot">🎟</span></div>
+        <div class="ck-panel">
+          <div class="ck-out" id="ckOut"><span>出口</span></div>
+          <div class="ck-deck">
+            <div class="ck-stick" id="ckStick"><i></i></div>
+            <span class="ck-btn" id="ckBtn"></span><span class="ck-btn b2"></span><span class="ck-btn b3"></span>
+            <div class="ck-coin">🎟</div>
+          </div>
+        </div>
       </div>`;
     const box = sh.stage.querySelector('#cmBox');
     const clawEl = sh.stage.querySelector('#cmClaw');
     const rope = sh.stage.querySelector('#cmRope');
     const held = sh.stage.querySelector('#cmHeld');
-    let x = 50, tries = 0, moving = 0, raf = 0, failRun = 0;
-    let prizes = [24, 38, 52, 66, 80].map((px) => ({ x: px + (Math.random() * 6 - 3), e: PLUSH[Math.floor(Math.random() * PLUSH.length)] }));
+    const stick = sh.stage.querySelector('#ckStick');
+    const out = sh.stage.querySelector('#ckOut');
+    let x = 55, tries = 0, moving = 0, raf = 0, failRun = 0;
+    const spot = () => 24 + Math.random() * 66;
+    let prizes = [28, 42, 56, 70, 84].map((px) => ({ x: px + (Math.random() * 6 - 3), e: PLUSH[Math.floor(Math.random() * PLUSH.length)] }));
     const renderPrizes = () => { sh.stage.querySelector('#cmPrizes').innerHTML = prizes.map((p, i) => `<span class="cm-p" data-i="${i}" style="left:${p.x}%">${p.e}</span>`).join(''); };
     const setX = () => { clawEl.style.left = x + '%'; };
     renderPrizes(); setX();
     const loop = () => {
-      if (moving && !sh.busy) { x = Math.max(16, Math.min(90, x + moving * 0.6)); setX(); clawEl.classList.add('sway'); } else clawEl.classList.remove('sway');
+      if (moving && !sh.busy) { x = Math.max(22, Math.min(92, x + moving * 0.6)); setX(); clawEl.classList.add('sway'); } else clawEl.classList.remove('sway');
+      stick.className = 'ck-stick' + (moving && !sh.busy ? (moving < 0 ? ' tl' : ' tr') : '');
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -260,63 +377,60 @@ window.Arcade = (() => {
       if (sh.busy) return;
       if (!spend(student, 1, '夾娃娃機')) return;
       tries++;
-      {
-        const aligned = prizes.some((p) => Math.abs(p.x - x) < 6.5);
-        const gp = Math.max(0, Math.min(100, grip0()));
-        Research.decide(student, '夾娃娃機', '夾', { p: aligned ? gp : 0, prize: Math.max(1, Number(A().clawPrize) || 30), cost: price(), round: tries, sunk: failRun, note: aligned ? '爪子有對準娃娃' : '爪子沒對準' });
-      }
-      sh.setBusy(true); sh.sub();
-      const boxH = box.clientHeight;
-      const depth = boxH * 0.62;
+      const aligned = prizes.some((p) => Math.abs(p.x - x) < 6.5);
+      const gp = Math.max(0, Math.min(100, grip0()));
+      Research.decide(student, '夾娃娃機', '夾', { p: aligned ? gp : 0, prize: Math.max(1, Number(A().clawPrize) || 30), cost: price(), round: tries, sunk: failRun, note: aligned ? '爪子有對準娃娃' : '爪子沒對準' });
+      sh.setBusy(true); sh.sub(); sh.hideResult(); FX.clear(sh.root);
+      out.classList.remove('has'); out.innerHTML = '<span>出口</span>';
+      sh.stage.querySelector('#ckBtn').classList.add('down'); setTimeout(() => { const b = sh.stage.querySelector('#ckBtn'); if (b) b.classList.remove('down'); }, 200);
+      const depth = Math.max(60, box.clientHeight * 0.8 - 66);
       clawEl.classList.add('open');
       Sound.lever();
-      rope.style.transition = 'height 1s ease-in'; rope.style.height = depth + 'px';
-      await sleep(1050);
+      rope.style.transition = 'height 1.1s ease-in'; rope.style.height = depth + 'px';
+      await sleep(1150);
       clawEl.classList.remove('open');
       Sound.clunk();
-      await sleep(350);
+      await sleep(380);
       const idx = prizes.findIndex((p) => Math.abs(p.x - x) < 6.5);
-      const grip = Math.max(0, Math.min(100, grip0()));
-      const success = idx >= 0 && Math.random() * 100 < grip;
+      const success = idx >= 0 && Math.random() * 100 < gp;
       if (idx >= 0) {
-        // 抓起來
         held.textContent = prizes[idx].e;
         sh.stage.querySelector(`.cm-p[data-i="${idx}"]`).style.visibility = 'hidden';
       }
       rope.style.transition = 'height 1.4s ease-out';
-      rope.style.height = (success || idx < 0 ? 14 : depth * 0.45) + 'px';
+      rope.style.height = (success || idx < 0 ? 14 : depth * 0.42) + 'px';
       const stopWait = idx >= 0 ? FX.suspense(sh.root, 1400) : () => {};
       await sleep(1450);
       stopWait();
       let prize = 0;
       if (idx >= 0 && !success) {
-        // 掉下來了…
         held.classList.add('fall');
         Sound.zero();
         await sleep(600);
         held.classList.remove('fall'); held.textContent = '';
         sh.stage.querySelector(`.cm-p[data-i="${idx}"]`).style.visibility = '';
-        prizes[idx].x = Math.max(20, Math.min(86, prizes[idx].x + (Math.random() * 10 - 5)));
+        prizes[idx].x = Math.max(24, Math.min(90, prizes[idx].x + (Math.random() * 10 - 5)));
         renderPrizes();
         rope.style.transition = 'height .6s'; rope.style.height = '14px';
         await sleep(600);
       } else if (success) {
-        // 移到出口
         clawEl.style.transition = 'left 1.2s ease-in-out';
-        x = 9; setX();
+        x = 10; setX();
         await sleep(1250);
         clawEl.classList.add('open');
         held.classList.add('drop');
         Sound.clunk();
-        await sleep(500);
+        await sleep(480);
+        const won = prizes[idx].e;
         held.classList.remove('drop'); held.textContent = '';
         clawEl.classList.remove('open');
         clawEl.style.transition = '';
+        out.innerHTML = `<b>${won}</b>`; out.classList.add('has');
         prize = Math.max(1, Number(A().clawPrize) || 30);
-        prizes[idx] = { x: 20 + Math.random() * 66, e: PLUSH[Math.floor(Math.random() * PLUSH.length)] };
+        prizes[idx] = { x: spot(), e: PLUSH[Math.floor(Math.random() * PLUSH.length)] };
         renderPrizes();
         FX.win(sh.root, 'big', sh.root.querySelector('.fx-behind'));
-        x = 50; setX();
+        x = 55; setX();
       } else {
         Sound.zero();
       }
@@ -562,40 +676,54 @@ window.Arcade = (() => {
   // =====================================================================
   function mole(student, back) {
     const sh = shell({ student, icon: '🔨', title: '打地鼠', bg: '#5a3a1a', back });
-    const LV = { easy: { up: 1150, gap: 650, name: '簡單' }, normal: { up: 850, gap: 500, name: '普通' }, hard: { up: 620, gap: 380, name: '困難' } };
-    const DUR = 20000;
+    const DUR = 20000, FEVER = 10000;
     let hits = 0, timers = [], running = false;
+    // 速度：前 10 秒慢慢變快，最後 10 秒超快
+    const speed = (t) => {
+      if (t < FEVER) { const f = t / FEVER; return { up: 1150 - f * 450, gap: 680 - f * 300, two: 0 }; }
+      const g = Math.min(1, (t - FEVER) / (DUR - FEVER));
+      return { up: 560 - g * 230, gap: 300 - g * 140, two: 0.35 + g * 0.35 };
+    };
     function intro() {
-      sh.stage.innerHTML = `<div class="mo-intro"><div class="mo-big">🔨</div><div>20 秒內打越多地鼠越好！金色地鼠 +3</div><div>每打中 ${Math.max(1, Number(A().molePer) || 2)} 隻得 1 點</div></div>`;
-      const acts = sh.actions(Object.entries(LV).map(([k, v]) => `<button class="go small" data-lv="${k}">${v.name}</button>`).join(''));
-      acts.querySelectorAll('[data-lv]').forEach((b) => b.onclick = () => start(b.dataset.lv));
-      sh.info('選難度開始（用 1 張入場券）');
+      sh.stage.innerHTML = `<div class="mo-intro"><div class="mo-big">🔨</div><div>20 秒內打越多地鼠越好！金色地鼠 +3</div><div>地鼠會越跑越快，<b>最後 10 秒超級快</b>！</div><div>每打中 ${Math.max(1, Number(A().molePer) || 2)} 隻得 1 點</div></div>`;
+      sh.actions('<button class="go" id="moStart">開始（用 1 張入場券）</button>').querySelector('#moStart').onclick = start;
+      sh.info('');
     }
-    function start(lv) {
+    function start() {
       if (sh.busy || running) return;
       if (!spend(student, 1, '打地鼠')) return;
-      Research.decide(student, '打地鼠', LV[lv].name, { cost: price() });
+      Research.decide(student, '打地鼠', '開始', { cost: price() });
       sh.sub(); hits = 0; running = true; sh.setBusy(true);
       sh.actions('');
       sh.info('點冒出來的地鼠！');
-      sh.stage.innerHTML = `<div class="mo"><div class="mo-hud"><span>🔨 <b id="moHits">0</b></span><div class="mo-time"><i id="moBar"></i></div></div>
+      sh.stage.innerHTML = `<div class="mo"><div class="mo-hud"><span>🔨 <b id="moHits">0</b></span><div class="mo-time"><i id="moBar"></i></div><span class="mo-sec" id="moSec">20</span></div>
         <div class="mo-grid">${Array.from({ length: 9 }, (_, i) => `<div class="hole" data-h="${i}"><div class="mole"></div></div>`).join('')}</div></div>`;
-      const cfg = LV[lv];
       const t0 = performance.now();
-      const bar = sh.stage.querySelector('#moBar');
-      const tick = () => { if (!running) return; const p = Math.min(1, (performance.now() - t0) / DUR); bar.style.width = (100 - p * 100) + '%'; if (p < 1) timers.push(requestAnimationFrame(tick)); };
+      const el = (id) => sh.stage.querySelector(id);
+      let fever = false;
+      const tick = () => {
+        if (!running) return;
+        const t = performance.now() - t0, p = Math.min(1, t / DUR);
+        el('#moBar').style.width = (100 - p * 100) + '%';
+        el('#moSec').textContent = Math.ceil((DUR - t) / 1000);
+        if (!fever && t >= FEVER) { fever = true; sh.stage.querySelector('.mo').classList.add('fever'); sh.info('⚡ 最後 10 秒！超快！'); Sound.bell(); }
+        if (p < 1) timers.push(requestAnimationFrame(tick));
+      };
       tick();
+      const popOne = (cfg) => {
+        const holes = [...sh.stage.querySelectorAll('.hole:not(.up)')];
+        if (!holes.length) return;
+        const h = holes[Math.floor(Math.random() * holes.length)];
+        const gold = Math.random() < 0.1;
+        h.classList.add('up'); h.classList.toggle('gold', gold);
+        h.querySelector('.mole').textContent = gold ? '🌟' : '🐹';
+        timers.push(setTimeout(() => h.classList.remove('up', 'gold', 'hit'), cfg.up));
+      };
       const pop = () => {
         if (!running) return;
-        const holes = [...sh.stage.querySelectorAll('.hole:not(.up)')];
-        if (holes.length) {
-          const h = holes[Math.floor(Math.random() * holes.length)];
-          const gold = Math.random() < 0.1;
-          h.classList.add('up'); h.classList.toggle('gold', gold);
-          h.querySelector('.mole').textContent = gold ? '🌟' : '🐹';
-          const down = setTimeout(() => h.classList.remove('up', 'gold', 'hit'), cfg.up);
-          timers.push(down);
-        }
+        const cfg = speed(performance.now() - t0);
+        popOne(cfg);
+        if (Math.random() < cfg.two) popOne(cfg);
         timers.push(setTimeout(pop, cfg.gap * (0.7 + Math.random() * 0.6)));
       };
       pop();
@@ -609,7 +737,7 @@ window.Arcade = (() => {
         Sound.tap(Math.min(1, hits / 30));
         const r = sh.root.getBoundingClientRect(), b = h.getBoundingClientRect();
         FX.burst(sh.root, b.left - r.left + b.width / 2, b.top - r.top + b.height / 3, gold ? 30 : 12, gold ? ['#ffd54f', '#fff'] : ['#ffe082', '#ffffff', '#ffab91']);
-        setTimeout(() => h.classList.remove('up', 'gold', 'hit'), 180);
+        setTimeout(() => h.classList.remove('up', 'gold', 'hit'), 160);
       };
       timers.push(setTimeout(end, DUR));
     }
@@ -627,6 +755,7 @@ window.Arcade = (() => {
       ]);
     }
     sh.cleanup.push(stopAll);
+    sh.onSpace = () => { if (!running) start(); };
     intro();
   }
 
