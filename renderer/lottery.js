@@ -485,60 +485,168 @@ window.Lottery = (() => {
     }
   };
 
-  // ---------- 轉盤 ----------
+  // ---------- 轉盤：賭場輪盤，小鋼珠在外圈繞、掉進格子裡跳來跳去，最後停在抽到的那一格 ----------
+  const RC = 150;
   const wheel = {
     rot: 0,
-    mount(box) {
+    // 依獎項顆數排出格子：至少 24 格，同一種獎項盡量不要排在一起
+    pockets() {
       const ws = weights('wheel').filter((x) => x.w > 0);
       const total = ws.reduce((a, b) => a + b.w, 0);
-      let ang = 0;
-      const R = 130, cx = 150, cy = 155;
-      const pt = (a, r) => [cx + r * Math.sin(a * Math.PI / 180), cy - r * Math.cos(a * Math.PI / 180)];
-      this.segs = [];
-      const parts = ws.map((x) => {
-        const span = x.w / total * 360;
-        const a0 = ang, a1 = ang + span; ang = a1;
-        this.segs.push({ id: x.item.id, a0, a1 });
-        const [x0, y0] = pt(a0, R), [x1, y1] = pt(a1, R);
-        const large = span > 180 ? 1 : 0;
-        const path = span >= 359.99
-          ? `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${x.item.color}" stroke="#fff" stroke-width="3"/>`
-          : `<path d="M${cx} ${cy} L${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 ${large} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}Z" fill="${x.item.color}" stroke="#fff" stroke-width="3"/>`;
-        const mid = (a0 + a1) / 2, [lx, ly] = pt(mid, R * 0.66);
-        const fs = span < 25 ? 12 : span < 45 ? 16 : 22;
-        const ink = inkFor(x.item.color);
-        const txt = `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" transform="rotate(${mid.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="bold" fill="${ink}">${esc(shortLabel(x.item))}</text>`;
-        return path + txt;
+      if (!total) return [];
+      const k = total < 24 ? Math.ceil(24 / total) : 1;
+      const scale = total * k > 40 ? 40 / (total * k) : 1;
+      const bag = [];
+      ws.forEach((x) => { const n = Math.max(1, Math.round(x.w * k * scale)); for (let i = 0; i < n; i++) bag.push(x.item); });
+      // 輪流從顆數最多的那一種拿，排開相同的
+      const groups = ws.map((x) => ({ item: x.item, n: bag.filter((b) => b === x.item).length }));
+      const out = [];
+      while (groups.some((g) => g.n > 0)) {
+        groups.sort((a, b) => b.n - a.n);
+        const g = groups.find((gg) => gg.n > 0 && (!out.length || out[out.length - 1] !== gg.item)) || groups[0];
+        out.push(g.item); g.n--;
+      }
+      return out;
+    },
+    mount(box) {
+      const pk = this.pockets();
+      this.pk = pk;
+      const n = Math.max(1, pk.length), span = 360 / n;
+      const pool = poolFor('wheel');
+      const top = pool.items.slice().sort((a, b) => (b.type === 'prize') - (a.type === 'prize') || b.points - a.points)[0];
+      const pt = (a, r) => [RC + r * Math.sin(a * Math.PI / 180), RC - r * Math.cos(a * Math.PI / 180)];
+      const arc = (r0, r1, a0, a1) => {
+        const [x0, y0] = pt(a0, r1), [x1, y1] = pt(a1, r1), [x2, y2] = pt(a1, r0), [x3, y3] = pt(a0, r0);
+        return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r1} ${r1} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)} L${x2.toFixed(2)} ${y2.toFixed(2)} A${r0} ${r0} 0 0 0 ${x3.toFixed(2)} ${y3.toFixed(2)}Z`;
+      };
+      let num = '', inner = '', frets = '';
+      pk.forEach((it, i) => {
+        const a0 = i * span, a1 = a0 + span, mid = a0 + span / 2;
+        const isTop = top && it.id === top.id;
+        const fill = isTop ? '#d4a017' : (Number(it.points) === 0 && it.type !== 'prize' ? '#1f8a3b' : (i % 2 ? '#1c1c1c' : '#c0262d'));
+        const ink = isTop ? '#3b2400' : '#ffffff';
+        num += `<path d="${arc(88, 110, a0, a1)}" fill="${fill}" stroke="#d9b45a" stroke-width=".8"/>`;
+        const [lx, ly] = pt(mid, 99);
+        const lab = shortLabel(it);
+        const fs = Math.min(13, Math.max(7, span * 0.85)) * (lab.length > 2 ? 0.8 : 1);
+        num += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" transform="rotate(${mid.toFixed(1)} ${lx.toFixed(1)} ${ly.toFixed(1)})" text-anchor="middle" dominant-baseline="central" font-size="${fs.toFixed(1)}" font-weight="bold" fill="${ink}">${esc(lab)}</text>`;
+        inner += `<path class="pocket" data-p="${i}" d="${arc(70, 88, a0, a1)}" fill="${i % 2 ? '#2f9e44' : '#237a35'}"/>`;
+        const [fx0, fy0] = pt(a0, 70), [fx1, fy1] = pt(a0, 110);
+        frets += `<line x1="${fx0.toFixed(2)}" y1="${fy0.toFixed(2)}" x2="${fx1.toFixed(2)}" y2="${fy1.toFixed(2)}" stroke="#e9d9a8" stroke-width="1.1"/>`;
+      });
+      const diamonds = Array.from({ length: 8 }, (_, i) => {
+        const a = i * 45 + 22.5, [x, y] = pt(a, 120);
+        return `<path d="M${x} ${y - 4} L${x + 3} ${y} L${x} ${y + 4} L${x - 3} ${y}Z" fill="#f3d27a" transform="rotate(${a} ${x} ${y})"/>`;
+      }).join('');
+      const arms = [0, 90, 180, 270].map((a) => {
+        const [x1, y1] = pt(a, 34);
+        return `<line x1="${RC}" y1="${RC}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="url(#rGold)" stroke-width="4.5" stroke-linecap="round"/><circle cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="5" fill="url(#rGold)"/>`;
       }).join('');
       box.innerHTML = `
-        <svg viewBox="0 0 300 300" class="skin-svg">
-          <circle cx="${cx}" cy="${cy}" r="${R + 10}" fill="#3b2f22"/>
-          <g class="wheel" style="transform-origin:${cx}px ${cy}px;transform:rotate(${this.rot % 360}deg)">${parts}</g>
-          <circle cx="${cx}" cy="${cy}" r="20" fill="#fff4dc" stroke="#3b2f22" stroke-width="5"/>
-          <path d="M${cx - 15} 8 L${cx + 15} 8 L${cx} 38 Z" fill="#e2574c" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+        <svg viewBox="0 0 300 300" class="skin-svg roulette">
+          <defs>
+            <radialGradient id="rWood" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#d48a3c"/><stop offset=".7" stop-color="#8a4a17"/><stop offset="1" stop-color="#5a2c0c"/></radialGradient>
+            <radialGradient id="rTrack" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="#a8642a"/><stop offset="1" stop-color="#4a230a"/></radialGradient>
+            <radialGradient id="rCone" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="#e0a35c"/><stop offset="1" stop-color="#7a4316"/></radialGradient>
+            <linearGradient id="rGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".5" stop-color="#e2b33c"/><stop offset="1" stop-color="#9c7414"/></linearGradient>
+            <radialGradient id="rBall" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#dfe4ea"/><stop offset="1" stop-color="#8a96a3"/></radialGradient>
+          </defs>
+          <circle cx="${RC}" cy="${RC}" r="148" fill="#0e4d24"/>
+          <circle cx="${RC}" cy="${RC}" r="143" fill="url(#rWood)"/>
+          <circle cx="${RC}" cy="${RC}" r="143" fill="none" stroke="#e2b33c" stroke-width="2"/>
+          <circle cx="${RC}" cy="${RC}" r="131" fill="url(#rTrack)"/>
+          <circle cx="${RC}" cy="${RC}" r="131" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>
+          ${diamonds}
+          <g class="rotor">
+            <circle cx="${RC}" cy="${RC}" r="112" fill="#d9b45a"/>
+            ${num}${inner}${frets}
+            <circle cx="${RC}" cy="${RC}" r="110" fill="none" stroke="#e9d9a8" stroke-width="1.2"/>
+            <circle cx="${RC}" cy="${RC}" r="70" fill="url(#rCone)"/>
+            ${[0, 45, 90, 135].map((a) => { const [x0, y0] = pt(a, 68), [x1, y1] = pt(a + 180, 68); return `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="rgba(80,40,10,.35)" stroke-width="1"/>`; }).join('')}
+            <circle cx="${RC}" cy="${RC}" r="70" fill="none" stroke="#e2b33c" stroke-width="2"/>
+            ${arms}
+            <circle cx="${RC}" cy="${RC}" r="11" fill="url(#rGold)" stroke="#9c7414" stroke-width="1"/>
+            <circle cx="${RC}" cy="${RC - 3}" r="4" fill="#fff6d0" opacity=".8"/>
+          </g>
+          <circle class="rball-shadow" cx="${RC}" cy="${RC - 122}" r="6" fill="rgba(0,0,0,.35)"/>
+          <circle class="rball" cx="${RC}" cy="${RC - 124}" r="5.6" fill="url(#rBall)" stroke="rgba(0,0,0,.25)" stroke-width=".6"/>
         </svg>`;
-      this.rot = this.rot % 360;
+      this.rot = ((this.rot % 360) + 360) % 360;
+      this.box = box;
+      this.setRotor(this.rot);
+      this.setBall(-30, 124, 0);
+    },
+    setRotor(deg) {
+      const g = this.box && this.box.querySelector('.rotor');
+      if (g) g.setAttribute('transform', `rotate(${deg.toFixed(2)} ${RC} ${RC})`);
+    },
+    setBall(worldDeg, r, lift) {
+      const b = this.box && this.box.querySelector('.rball');
+      if (!b) return;
+      const a = worldDeg * Math.PI / 180;
+      const x = RC + r * Math.sin(a), y = RC - r * Math.cos(a);
+      b.setAttribute('cx', x.toFixed(2)); b.setAttribute('cy', (y - lift).toFixed(2));
+      b.setAttribute('r', (5.6 + lift * 0.12).toFixed(2));
+      const sh = this.box.querySelector('.rball-shadow');
+      sh.setAttribute('cx', (x + 1.5 + lift * 0.3).toFixed(2)); sh.setAttribute('cy', (y + 2).toFixed(2));
+      sh.setAttribute('opacity', Math.max(0.15, 1 - lift / 14).toFixed(2));
     },
     async play(box, item, ctx) {
+      const pk = this.pk || [];
+      const idx = pk.map((p, i) => (p.id === item.id ? i : -1)).filter((i) => i >= 0);
+      if (!idx.length) return;
       ctx.dark(true);
-      const stop = ctx.wait(3300);
-      const seg = this.segs.find((s) => s.id === item.id) || this.segs[0];
-      const a = seg.a0 + (seg.a1 - seg.a0) * (0.18 + Math.random() * 0.64);
-      const cur = ((this.rot % 360) + 360) % 360;
-      const need = ((360 - a - cur) % 360 + 360) % 360;
-      this.rot += 360 * 4 + need;
-      const g = box.querySelector('.wheel');
-      g.style.transition = 'transform 3.1s cubic-bezier(.12,.68,.12,1)';
-      g.style.transform = `rotate(${this.rot}deg)`;
-      let t = 0, gap = 35;
-      while (t < 2950) { setTimeout(() => Sound.tick(), t); t += gap; gap *= 1.1; }
-      await sleep(3200);
+      const T = 3300, TDROP = 1450;
+      const stop = ctx.wait(T);
+      const n = pk.length, span = 360 / n;
+      const target = idx[Math.floor(Math.random() * idx.length)];
+      const pocketMid = target * span + span / 2;
+      // 輪盤順時針慢下來；小鋼珠逆時針快速繞圈
+      const r0 = this.rot, wR = 150;
+      const rotorAt = (t) => r0 + wR * 1.6 * (1 - Math.exp(-t / 1600));
+      const spins = 1080 + Math.random() * 120;
+      const ease = (p) => 1 - Math.pow(1 - p, 2.4);
+      const t0 = performance.now();
+      let lastCell = null, lastTick = 0, lastHop = 0;
+      await new Promise((resolve) => {
+        const frame = (now) => {
+          if (!this.box || !this.box.isConnected) { resolve(); return; }
+          const t = Math.min(T, now - t0), p = t / T;
+          const rot = rotorAt(t);
+          this.setRotor(rot);
+          // 珠子相對於輪盤的角度：從遠處快速逆轉，最後收到目標格子
+          let rel = pocketMid + spins * (1 - ease(p));
+          let r, lift = 0;
+          if (t < TDROP) {
+            r = 124;
+            if (now - lastTick > 60 + p * 140) { Sound.tick(); lastTick = now; }
+          } else {
+            const q = (t - TDROP) / (T - TDROP);
+            // 掉進格子區：半徑往內縮、上下彈跳，左右在格子之間晃來晃去（心懸一線）
+            r = 124 - (124 - 79) * Math.min(1, q * 3.2);
+            const hopP = Math.abs(Math.sin(q * Math.PI * 5.5)) * Math.pow(1 - q, 1.6);
+            lift = hopP * 9;
+            rel += Math.sin(q * Math.PI * 4.2) * span * 1.15 * Math.pow(1 - q, 1.8);
+            if (hopP < 0.06 && now - lastHop > 120 && q < 0.95) { Sound.rattle(); lastHop = now; }
+          }
+          const cell = Math.floor((((rel % 360) + 360) % 360) / span);
+          if (t >= TDROP && cell !== lastCell && lastCell !== null) Sound.tick();
+          lastCell = cell;
+          this.setBall(rot + rel, r, lift);
+          if (t < T) requestAnimationFrame(frame); else resolve();
+        };
+        requestAnimationFrame(frame);
+      });
+      this.rot = rotorAt(T);
+      Sound.clunk();
+      const cellEl = box.querySelector(`.pocket[data-p="${target}"]`);
+      if (cellEl) cellEl.classList.add('win-pocket');
       stop();
       ctx.dark(false);
+      await sleep(250);
     }
   };
 
-  // ---------- 骰子 ----------
   // 立體骰子：六個面放獎項，丟出去會跳、會滾、會彈，最後停在抽到的那一面
   // 每一面轉到正前方要的角度（rotateX, rotateY）
   const FACE_ROT = [[0, 0], [0, 180], [0, -90], [0, 90], [-90, 0], [90, 0]];

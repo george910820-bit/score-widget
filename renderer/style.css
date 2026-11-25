@@ -739,3 +739,8 @@ body.is-display .zg-ic { font-size: 90px; }
 .ms-give:hover { background: rgba(255,255,255,.3); }
 body.is-display .mp-side { width: 340px; font-size: 1.1em; }
 body.is-display .mp-title { font-size: 1.6em; }
+
+/* 賭場輪盤 */
+.roulette .rball { filter: drop-shadow(0 0 2px rgba(255,255,255,.6)); }
+.roulette .pocket.win-pocket { animation: pocketWin .45s ease-in-out infinite alternate; }
+@keyframes pocketWin { 0% { fill: #2f9e44; } 100% { fill: #ffe082; } }
