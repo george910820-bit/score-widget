@@ -368,7 +368,7 @@ window.Arcade = (() => {
     const prizeOf = (p) => (p && p.userData.gold ? Math.max(1, Number(A().clawGoldPrize) || 100) : Math.max(1, Number(A().clawPrize) || 30));
     // 鏡頭
     const V = {
-      player: () => { const a = cv.clientWidth / Math.max(1, cv.clientHeight); return { p: [0, 1.5, a < 1.15 ? 1.85 : 1.55], t: [0, 1.1, 0], fov: a < 1.15 ? 46 : 40 }; },
+      player: () => { const a = cv.clientWidth / Math.max(1, cv.clientHeight); return { p: [0, 1.52, a < 1.15 ? 1.95 : 1.68], t: [0, 1.02, 0.05], fov: a < 1.15 ? 46 : 41 }; },
       side: () => ({ p: [1.65, 1.38, 0.0], t: [0, 1.1, 0], fov: 42 }),
       door: () => ({ p: [-0.12, 0.6, 1.4], t: [-0.3, 0.33, 0.42], fov: 34 })
     };
@@ -423,6 +423,7 @@ window.Arcade = (() => {
       } else { M.aim.visible = false; tip.textContent = ''; tip.className = 'c3-tip'; }
       M.setViewVec(cam.p, cam.t, cam.fov);
       M.render(now / 1000);
+      if (typeof placeHints === 'function') placeHints();
       raf = requestAnimationFrame(loop);
     };
     const tw = (obj, key, to, ms, ease) => new Promise((res) => {
@@ -555,22 +556,58 @@ window.Arcade = (() => {
       await camTo(side ? 'side' : 'player', 650);
     }
     // 操作
-    sh.info('用搖桿把爪子移到娃娃上面（前後左右都可以），娃娃頭上出現綠色圈圈就是對準了，再按「夾！」');
-    const acts = sh.actions(`<div class="joy" id="joy"><span class="jl u">後</span><span class="jl d">前</span><span class="jl l">左</span><span class="jl r">右</span><div class="joy-knob" id="joyKnob"></div></div><button class="go" id="cmGo">夾！</button>`);
-    const joy = acts.querySelector('#joy'), knob = acts.querySelector('#joyKnob');
-    let jp = null;
-    const setJoy = (e) => {
-      const r = joy.getBoundingClientRect(), R = r.width / 2 - 18;
-      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-      const d = Math.hypot(dx, dy); if (d > R) { dx = dx / d * R; dy = dy / d * R; }
-      knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-      v.x = Math.abs(dx / R) > 0.18 ? dx / R : 0;
-      v.z = Math.abs(dy / R) > 0.18 ? -dy / R : 0;
+    // 直接操作機台上的 3D 搖桿和按鈕（沒有另外的操作區）
+    sh.info(''); sh.actions('');
+    sh.root.classList.add('c3-full');
+    const hintStick = document.createElement('div'); hintStick.className = 'c3-hint stick'; hintStick.innerHTML = '<b>⬅ ⬆ ➡</b>拖曳搖桿移動爪子';
+    const hintBtn = document.createElement('div'); hintBtn.className = 'c3-hint btn'; hintBtn.innerHTML = '<b>👇</b>按這裡夾！';
+    wrap.append(hintStick, hintBtn);
+    let usedStick = false, usedBtn = false;
+    const scr = (obj, local) => {
+      const p = new window.THREE.Vector3(...local); obj.localToWorld(p); p.project(M.camera);
+      return { x: (p.x + 1) / 2 * cv.clientWidth, y: (1 - p.y) / 2 * cv.clientHeight, ok: p.z < 1 };
     };
-    joy.onpointerdown = (e) => { jp = e.pointerId; joy.setPointerCapture(e.pointerId); setJoy(e); };
-    joy.onpointermove = (e) => { if (jp === e.pointerId) setJoy(e); };
-    joy.onpointerup = joy.onpointercancel = () => { jp = null; v.x = 0; v.z = 0; knob.style.transform = 'translate(-50%, -50%)'; };
-    acts.querySelector('#cmGo').onclick = drop;
+    const stickPos = () => scr(M.stick, [0, 0.14, 0]);
+    const stickBasePos = () => scr(M.stick, [0, 0, 0]);
+    const btnPos = () => scr(M.btn, [0, 0.02, 0]);
+    const reach = () => Math.max(45, cv.clientHeight * 0.085);
+    let jp = null, jStart = null;
+    const local = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const near = (a, b, d) => Math.hypot(a.x - b.x, a.y - b.y) < d;
+    cv.addEventListener('pointerdown', (e) => {
+      const q = local(e);
+      if (near(q, stickPos(), reach() * 0.9) || near(q, stickBasePos(), reach() * 0.7)) {
+        if (sh.busy) return;
+        jp = e.pointerId; jStart = stickBasePos(); cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing';
+        usedStick = true; Sound.tick();
+        moveStick(q); e.preventDefault(); return;
+      }
+      if (near(q, btnPos(), reach() * 0.85)) { e.preventDefault(); usedBtn = true; drop(); }
+    });
+    const moveStick = (q) => {
+      const R = reach();
+      let dx = (q.x - jStart.x) / R, dy = (q.y - jStart.y + R * 0.6) / R; // 抓的是球（在底座上方），所以往下補一點
+      const d = Math.hypot(dx, dy); if (d > 1) { dx /= d; dy /= d; }
+      v.x = Math.abs(dx) > 0.15 ? dx : 0;
+      v.z = Math.abs(dy) > 0.15 ? -dy : 0;
+    };
+    cv.addEventListener('pointermove', (e) => {
+      const q = local(e);
+      if (jp === e.pointerId) { moveStick(q); return; }
+      if (sh.busy) { cv.style.cursor = ''; return; }
+      cv.style.cursor = near(q, stickPos(), reach() * 0.9) || near(q, stickBasePos(), reach() * 0.7) ? 'grab' : near(q, btnPos(), reach() * 0.85) ? 'pointer' : '';
+    });
+    const release = (e) => { if (jp !== e.pointerId) return; jp = null; v.x = 0; v.z = 0; cv.style.cursor = ''; };
+    cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+    // 提示泡泡跟著 3D 搖桿和按鈕跑
+    const placeHints = () => {
+      const a = stickPos(), b = btnPos(), show = !sh.busy && view !== 'door';
+      hintStick.style.left = a.x + 'px'; hintStick.style.top = (a.y - reach() * 0.9) + 'px';
+      hintBtn.style.left = b.x + 'px'; hintBtn.style.top = (b.y - reach() * 0.9) + 'px';
+      hintStick.classList.toggle('on', show && !usedStick);
+      hintBtn.classList.toggle('on', show && usedStick && !usedBtn);
+    };
+    sh.cleanup.push(() => { hintStick.remove(); hintBtn.remove(); });
     const viewBtn = wrap.querySelector('#c3View');
     viewBtn.onclick = () => { if (sh.busy) return; side = !side; viewBtn.textContent = side ? '🎮 回正面' : '👀 看側邊'; camTo(side ? 'side' : 'player'); Sound.tick(); };
     wrap.querySelector('#c3Book').onclick = () => openBook(student, sh.root);

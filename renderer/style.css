@@ -1048,3 +1048,10 @@ body.is-display .c3-b { font-size: 1.3em; padding: 10px 18px; }
 .bk-c.gold.got { background: radial-gradient(circle, #fff8c4, #ffe082); box-shadow: inset 0 0 0 3px #ffb300, 0 0 12px #ffd54f; }
 .z-book { margin-top: 6px; border: 0; border-radius: 10px; padding: 6px 12px; background: #8d6e63; color: #fff; font-weight: bold; cursor: pointer; }
 .z-book b { background: #fff; color: #5d4037; border-radius: 8px; padding: 0 6px; margin-left: 4px; }
+.c3-full .lotto-actions, .c3-full .lotto-info { display: none; }
+.c3-hint { position: absolute; transform: translate(-50%, -100%); background: #fff; color: #c2185b; font-weight: 900; border-radius: 14px; padding: 6px 12px; box-shadow: 0 4px 14px rgba(0,0,0,.4); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .25s; z-index: 4; display: flex; flex-direction: column; align-items: center; animation: c3Bob 1s ease-in-out infinite; }
+.c3-hint b { font-size: 1.2em; }
+.c3-hint::after { content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #fff; }
+.c3-hint.on { opacity: 1; }
+@keyframes c3Bob { 50% { transform: translate(-50%, calc(-100% - 6px)); } }
+body.is-display .c3-hint { font-size: 1.3em; }
