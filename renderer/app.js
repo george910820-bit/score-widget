@@ -81,7 +81,7 @@
       slot: { on: true, bets: defaultBets(), nearMiss: true },
       zone: { on: true, price: 10, scratch: defaultScratch() },
       monopoly: { perRoll: 5, startCoins: 100, salary: 50, autoOpen: false },
-      arcade: { clawGrip: 30, clawPrize: 30, plinko: '80,30,12,5,2,5,12,30,80', molePer: 2, saveDays: 7 }
+      arcade: { clawGrip: 30, clawPrize: 30, clawGoldGrip: 15, clawGoldPrize: 100, plinko: '80,30,12,5,2,5,12,30,80', molePer: 2, saveDays: 7 }
     };
   }
   function defaultData() {
@@ -128,6 +128,7 @@
         if (st.avatar === undefined) st.avatar = null;
         st.zoneTickets = Number(st.zoneTickets) || 0;
         if (!Array.isArray(st.savings)) st.savings = [];
+        if (!st.plush || typeof st.plush !== 'object') st.plush = {};
       });
     });
     if (!Array.isArray(out.history)) out.history = [];
@@ -696,9 +697,10 @@
     $('inMpPer').value = data.settings.monopoly.perRoll;
     const ar = data.settings.arcade;
     $('inClawGrip').value = ar.clawGrip; $('inClawPrize').value = ar.clawPrize;
+    $('inClawGoldGrip').value = ar.clawGoldGrip; $('inClawGoldPrize').value = ar.clawGoldPrize;
     $('inPlinko').value = Arcade.plinkoPrizes().join(', ');
     $('inMolePer').value = ar.molePer; $('inSaveDays').value = ar.saveDays;
-    $('clawEv').textContent = `夾一次平均 ${(ar.clawGrip / 100 * ar.clawPrize - pr).toFixed(1).replace('.0', '')} 點（已扣入場券 ${pr} 點；沒對準就夾不到，實際更低）`;
+    $('clawEv').textContent = `對準一般娃娃夾一次平均 ${(ar.clawGrip / 100 * ar.clawPrize - pr).toFixed(1).replace('.0', '')} 點；對準金色娃娃平均 ${(ar.clawGoldGrip / 100 * ar.clawGoldPrize - pr).toFixed(1).replace('.0', '')} 點（已扣入場券 ${pr} 點；沒對準就夾不到）`;
     $('plinkoEv').textContent = `丟一顆平均 ${(Arcade.plinkoEV() - pr).toFixed(1).replace('.0', '')} 點（已扣入場券 ${pr} 點）。中間的格子最常掉進去。`;
     $('inMpStart').value = data.settings.monopoly.startCoins;
     $('inMpSalary').value = data.settings.monopoly.salary;
@@ -1087,6 +1089,8 @@
   const AR = () => data.settings.arcade;
   const clampIn = (v, lo, hi, d) => { const n = Number(v); return Math.max(lo, Math.min(hi, Math.round(v === '' || !Number.isFinite(n) ? d : n))); };
   $('inClawGrip').onchange = (e) => { AR().clawGrip = clampIn(e.target.value, 0, 100, 30); save(); renderSlotSettings(); };
+  $('inClawGoldGrip').onchange = (e) => { AR().clawGoldGrip = clampIn(e.target.value, 0, 100, 15); save(); renderSlotSettings(); };
+  $('inClawGoldPrize').onchange = (e) => { AR().clawGoldPrize = clampIn(e.target.value, 1, 999, 100); save(); renderSlotSettings(); };
   $('inClawPrize').onchange = (e) => { AR().clawPrize = clampIn(e.target.value, 1, 999, 30); save(); renderSlotSettings(); };
   $('inPlinko').onchange = (e) => {
     const arr = e.target.value.split(/[,，\s]+/).filter(Boolean);

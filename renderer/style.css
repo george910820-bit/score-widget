@@ -1018,3 +1018,33 @@ body.is-display .joy-knob { width: 72px; height: 72px; }
 @keyframes tkTxt { 0% { transform: scale(0); } 25% { transform: scale(1.2); } 40% { transform: scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
 .z-ticket-big.bump { animation: tkBump .5s cubic-bezier(.3,1.8,.5,1); }
 @keyframes tkBump { 0% { transform: scale(1); } 40% { transform: scale(1.25); box-shadow: 0 0 30px #ffd54f; } 100% { transform: scale(1); } }
+
+/* 3D 夾娃娃機 */
+.c3 .ar-stage { padding: 0; }
+.c3-wrap { position: relative; width: 100%; height: 100%; min-height: 0; flex: 1; }
+.c3-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.c3-hud { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 3; }
+.c3-b { border: 0; border-radius: 12px; padding: 8px 14px; background: rgba(0,0,0,.55); color: #fff; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px); font-size: 1em; }
+.c3-b:hover { background: rgba(0,0,0,.75); }
+.c3-tip { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); padding: 6px 16px; border-radius: 20px; font-weight: bold; opacity: 0; transition: opacity .2s; background: #1b5e20; color: #fff; z-index: 3; pointer-events: none; }
+.c3-tip.on { opacity: 1; }
+.c3-tip.gold { background: linear-gradient(90deg, #ff8f00, #ffd54f); color: #5d2c00; }
+body.is-display .c3-b { font-size: 1.3em; padding: 10px 18px; }
+
+/* 收藏冊 */
+.bk-ov { position: absolute; inset: 0; z-index: 40; background: rgba(10,5,30,.78); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px; backdrop-filter: blur(3px); }
+.bk { width: min(96%, 880px); max-height: 82%; overflow-y: auto; background: linear-gradient(180deg, #fff8e1, #ffe0b2); color: #4e342e; border-radius: 20px; padding: 14px 18px; box-shadow: 0 10px 40px rgba(0,0,0,.5); border: 6px solid #8d6e63; }
+.bk-h { font-size: 1.3em; font-weight: 900; display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+.bk-h span { font-size: .7em; font-weight: bold; color: #8d6e63; }
+.bk-sub { margin: 10px 0 4px; font-weight: bold; color: #e65100; }
+.bk-g { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 6px; }
+.bk-c { position: relative; background: #fff; border-radius: 14px; padding: 4px; display: flex; flex-direction: column; align-items: center; box-shadow: inset 0 0 0 2px #d7ccc8; }
+.bk-c img { width: 100%; max-width: 110px; aspect-ratio: 1; object-fit: contain; filter: brightness(0) opacity(.18); }
+.bk-c.got img { filter: none; }
+.bk-c .bk-q { font-size: 48px; filter: grayscale(1) opacity(.2); }
+.bk-c b { font-size: .85em; }
+.bk-c i { position: absolute; top: 4px; right: 6px; font-style: normal; font-weight: bold; background: #ff7043; color: #fff; border-radius: 10px; padding: 0 6px; font-size: .8em; }
+.bk-c.gold { background: #fffbe6; box-shadow: inset 0 0 0 2px #ffe082; }
+.bk-c.gold.got { background: radial-gradient(circle, #fff8c4, #ffe082); box-shadow: inset 0 0 0 3px #ffb300, 0 0 12px #ffd54f; }
+.z-book { margin-top: 6px; border: 0; border-radius: 10px; padding: 6px 12px; background: #8d6e63; color: #fff; font-weight: bold; cursor: pointer; }
+.z-book b { background: #fff; color: #5d4037; border-radius: 8px; padding: 0 6px; margin-left: 4px; }

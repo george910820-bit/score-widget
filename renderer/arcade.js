@@ -81,7 +81,7 @@ window.Arcade = (() => {
     W.save();
     W.renderAll();
   }
-  const NOTE = { slot: '落在第幾格(0起)', tries: '這次連玩第幾次', rounds: '猜對幾關', lost: '輸掉的獎金', closed: '中途關掉', racer: '押', winner: '贏的是', bet: '押法', place: '押的那隻跑第幾名', hits: '打中', mistakes: '翻錯', pairs: '幾對', flips: '按擋板次數' };
+  const NOTE = { slot: '落在第幾格(0起)', tries: '這次連玩第幾次', rounds: '猜對幾關', lost: '輸掉的獎金', closed: '中途關掉', racer: '押', winner: '贏的是', bet: '押法', place: '押的那隻跑第幾名', hits: '打中', plush: '夾到', newPlush: '收藏冊新的一隻', mistakes: '翻錯', pairs: '幾對', flips: '按擋板次數' };
   const ticketWorth = (n) => `${n} 張入場券（值 ${n * price()} 點）`;
 
   // =====================================================================
@@ -320,7 +320,279 @@ window.Arcade = (() => {
   // 夾娃娃機：自己移動爪子；夾中的機率由老師設定；提醒「沉沒成本」
   // =====================================================================
   const PLUSH = ['🧸', '🐻', '🐰', '🦄', '🐥', '🐼', '🐸', '🐶'];
+  // ---------- 收藏冊 ----------
+  const plushKey = (type, gold) => (gold ? 'gold:' : '') + type;
+  function bookHTML(s) {
+    const own = s.plush || {};
+    const th = window.ClawModel ? ClawModel.thumbs() : null;
+    const types = window.ClawModel ? ClawModel.PLUSH_TYPES : [];
+    const cell = (tp, gold) => {
+      const k = plushKey(tp, gold), n = own[k] || 0, src = th && th[k];
+      return `<div class="bk-c${n ? ' got' : ''}${gold ? ' gold' : ''}">${src ? `<img src="${src}" alt="">` : '<span class="bk-q">🧸</span>'}<b>${n ? (gold ? '金' : '') + ClawModel.PLUSH_NAMES[tp] : '？？？'}</b>${n > 1 ? `<i>×${n}</i>` : ''}</div>`;
+    };
+    const got = types.filter((t) => own[t]).length, gotG = types.filter((t) => own[plushKey(t, true)]).length;
+    return `<div class="bk"><div class="bk-h">📒 ${esc(s.name)}的收藏冊 <span>一般 ${got}／${types.length}・金色 ${gotG}／${types.length}</span></div>
+      <div class="bk-g">${types.map((t) => cell(t, false)).join('')}</div>
+      <div class="bk-sub">✨ 金色稀有娃娃</div>
+      <div class="bk-g">${types.map((t) => cell(t, true)).join('')}</div></div>`;
+  }
+  function openBook(s, host) {
+    const ov = document.createElement('div');
+    ov.className = 'bk-ov';
+    ov.innerHTML = bookHTML(s) + '<button class="go small bk-x">關閉</button>';
+    host.appendChild(ov);
+    ov.querySelector('.bk-x').onclick = () => ov.remove();
+    ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+    Sound.tick();
+  }
+
+  // ---------- 3D 夾娃娃機 ----------
+  const webglOK = (() => { let v = null; return () => { if (v !== null) return v; try { const c = document.createElement('canvas'); v = !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { v = false; } return v; }; })();
   function claw(student, back) {
+    if (!window.THREE || !window.ClawModel || !webglOK()) return claw2d(student, back);
+    const sh = shell({ student, icon: '🧸', title: '夾娃娃機', bg: '#120a2a', back });
+    sh.root.classList.add('c3');
+    sh.stage.innerHTML = `<div class="c3-wrap"><canvas class="c3-cv"></canvas>
+      <div class="c3-hud"><button class="c3-b" id="c3View">👀 看側邊</button><button class="c3-b" id="c3Book">📒 收藏冊</button></div>
+      <div class="c3-tip" id="c3Tip"></div></div>`;
+    const wrap = sh.stage.querySelector('.c3-wrap'), cv = wrap.querySelector('canvas'), tip = wrap.querySelector('#c3Tip');
+    let M;
+    try { M = ClawModel.create(cv, { gold: 1 }); } catch (e) { console.error(e); sh.close(true); return claw2d(student, back); }
+    const st = M.state;
+    sh.root.__claw = M; // 方便測試
+    const TOP = st.y;
+    const HOME = { x: 0.1, z: 0.05 };
+    const v = { x: 0, z: 0 }, keys = {};
+    let tries = 0, failRun = 0, raf = 0, last = performance.now(), side = false, view = null, aimed = null, closed = false;
+    const goldGrip = () => { const g = Number(A().clawGoldGrip); return Number.isFinite(g) ? Math.max(0, Math.min(100, g)) : 15; };
+    const prizeOf = (p) => (p && p.userData.gold ? Math.max(1, Number(A().clawGoldPrize) || 100) : Math.max(1, Number(A().clawPrize) || 30));
+    // 鏡頭
+    const V = {
+      player: () => { const a = cv.clientWidth / Math.max(1, cv.clientHeight); return { p: [0, 1.5, a < 1.15 ? 1.85 : 1.55], t: [0, 1.1, 0], fov: a < 1.15 ? 46 : 40 }; },
+      side: () => ({ p: [1.65, 1.38, 0.0], t: [0, 1.1, 0], fov: 42 }),
+      door: () => ({ p: [-0.12, 0.6, 1.4], t: [-0.3, 0.33, 0.42], fov: 34 })
+    };
+    let cam = V.player();
+    const camTo = (name, ms = 650) => new Promise((res) => {
+      const to = V[name](), from = { p: [...cam.p], t: [...cam.t], fov: cam.fov }, t0 = performance.now();
+      view = name;
+      const step = (now) => {
+        if (closed) { res(); return; }
+        let k = Math.min(1, (now - t0) / ms); k = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        cam = { p: from.p.map((x, i) => x + (to.p[i] - x) * k), t: from.t.map((x, i) => x + (to.t[i] - x) * k), fov: from.fov + (to.fov - from.fov) * k };
+        if (k < 1) requestAnimationFrame(step); else res();
+      };
+      requestAnimationFrame(step);
+    });
+    const resize = () => { const w = wrap.clientWidth, h = wrap.clientHeight; if (w && h) { M.resize(w, h); if (view === 'player' || !view) cam = V.player(); } };
+    const ro = new ResizeObserver(resize); ro.observe(wrap);
+    // 找爪子正下方的娃娃（優先最上面那隻）
+    function findAim() {
+      let best = null;
+      M.prizes.forEach((p) => {
+        const d = Math.hypot(p.position.x - st.x, p.position.z - st.z);
+        if (d < 0.075 * p.scale.x && (!best || p.position.y > best.position.y)) best = p;
+      });
+      return best;
+    }
+    const restY = (x, z, self) => (M.prizes.some((q) => q !== self && q.position.y < M.FLOOR + 0.03 && Math.hypot(q.position.x - x, q.position.z - z) < 0.12) ? M.FLOOR + 0.09 : M.FLOOR);
+    const loop = (now) => {
+      if (closed) return;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const kx = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0), kz = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0);
+      let mx = kx || v.x, mz = kz || -v.z;
+      if (sh.busy) { mx = 0; mz = 0; }
+      // 側面視角時，搖桿的左右變成前後（跟著鏡頭轉）
+      const dx = side ? mz : mx, dz = side ? -mx : mz;
+      if (dx || dz) {
+        st.x = Math.max(-M.LIM.x, Math.min(M.LIM.x, st.x + dx * 0.36 * dt));
+        st.z = Math.max(-M.LIM.z, Math.min(M.LIM.z, st.z + dz * 0.36 * dt));
+        if (!st.moving) { st.moving = true; }
+      } else st.moving = false;
+      st.vx = dx; st.vz = -dz;
+      // 爪子移動時輕輕晃
+      M.claw.rotation.z += ((-dx * 0.12) - M.claw.rotation.z) * 0.08;
+      M.claw.rotation.x += ((dz * 0.12) - M.claw.rotation.x) * 0.08;
+      if (!sh.busy) {
+        aimed = findAim();
+        M.aim.material.color.set(aimed ? (aimed.userData.gold ? 0xffd54f : 0x69f0ae) : 0xffffff);
+        M.aim.position.y = aimed ? aimed.position.y + 0.3 * aimed.scale.x : M.FLOOR + 0.004;
+        M.aim.visible = true;
+        tip.textContent = aimed ? (aimed.userData.gold ? '✨ 對準金色娃娃了！' : '✅ 對準了！按「夾」') : '';
+        tip.className = 'c3-tip' + (aimed ? ' on' : '') + (aimed && aimed.userData.gold ? ' gold' : '');
+      } else { M.aim.visible = false; tip.textContent = ''; tip.className = 'c3-tip'; }
+      M.setViewVec(cam.p, cam.t, cam.fov);
+      M.render(now / 1000);
+      raf = requestAnimationFrame(loop);
+    };
+    const tw = (obj, key, to, ms, ease) => new Promise((res) => {
+      const from = obj[key], t0 = performance.now();
+      const step = (now) => {
+        if (closed) { res(); return; }
+        let p = Math.min(1, (now - t0) / ms);
+        p = ease === 'in' ? p * p : ease === 'out' ? 1 - (1 - p) * (1 - p) : p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        obj[key] = from + (to - from) * p;
+        if (p < 1) requestAnimationFrame(step); else res();
+      };
+      requestAnimationFrame(step);
+    });
+    // 娃娃掉下去（簡單的重力＋彈一下）
+    const fall = (p, toY, ms = 520) => new Promise((res) => {
+      const y0 = p.position.y, rx = p.rotation.x, rz = p.rotation.z, spin = (Math.random() - 0.5) * 1.2, t0 = performance.now();
+      const step = (now) => {
+        if (closed) { res(); return; }
+        const k = Math.min(1, (now - t0) / ms);
+        const b = k < 0.75 ? Math.pow(k / 0.75, 2) : 1 - Math.sin((k - 0.75) / 0.25 * Math.PI) * 0.12;
+        p.position.y = y0 + (toY - y0) * b;
+        p.rotation.x = rx + spin * k * 0.6; p.rotation.z = rz + spin * k * 0.4;
+        if (k < 1) requestAnimationFrame(step); else res();
+      };
+      requestAnimationFrame(step);
+    });
+    function spawnPrize() {
+      const types = ClawModel.PLUSH_TYPES;
+      let x = 0, z = 0, ok = false;
+      for (let n = 0; n < 40 && !ok; n++) {
+        x = -0.3 + Math.random() * 0.68; z = -0.3 + Math.random() * 0.6;
+        ok = !(x < M.chute.x + M.chute.s / 2 + 0.07 && z > M.chute.z - M.chute.s / 2 - 0.07) && !M.prizes.some((q) => Math.hypot(q.position.x - x, q.position.z - z) < 0.15);
+      }
+      const y = restY(x, z);
+      const p = M.addPrize(types[Math.floor(Math.random() * types.length)], x, z, y + 0.5, Math.random() * 6, (Math.random() - 0.5) * 0.3, Math.random() < 0.08);
+      fall(p, y, 600);
+    }
+    async function drop() {
+      if (sh.busy) return;
+      if (!spend(student, 1, '夾娃娃機')) return;
+      tries++;
+      const target = findAim();
+      const gp = target ? (target.userData.gold ? goldGrip() : Math.max(0, Math.min(100, grip0()))) : 0;
+      Research.decide(student, '夾娃娃機', target && target.userData.gold ? '夾（金色娃娃）' : '夾', { p: gp, prize: prizeOf(target), cost: price(), round: tries, sunk: failRun, note: target ? (target.userData.gold ? '對準金色娃娃' : '爪子有對準娃娃') : '爪子沒對準' });
+      sh.setBusy(true); sh.sub(); sh.hideResult(); FX.clear(sh.root);
+      v.x = v.z = 0;
+      // 3D 按鈕按下去
+      M.btn.position.y -= 0.014; setTimeout(() => { M.btn.position.y += 0.014; }, 220);
+      Sound.lever();
+      await tw(st, 'open', 1, 300);
+      const downY = target ? target.position.y + 0.27 * target.scale.x : M.FLOOR + 0.24;
+      await tw(st, 'y', downY, 1300, 'in');
+      await tw(st, 'open', 0, 380);
+      Sound.clunk();
+      const success = !!target && Math.random() * 100 < gp;
+      if (target) M.heldSlot.attach(target);
+      const stopWait = target ? FX.suspense(sh.root, 1500) : () => {};
+      let prize = 0;
+      if (target && !success) {
+        await tw(st, 'y', downY + 0.18 + Math.random() * 0.2, 900, 'out');
+        stopWait();
+        // 爪子沒抓緊，娃娃滑下去
+        tw(st, 'open', 0.45, 160);
+        M.prizeGroup.attach(target);
+        Sound.zero();
+        await fall(target, restY(target.position.x, target.position.z, target));
+        await tw(st, 'y', TOP, 700);
+        await tw(st, 'open', 0.25, 200);
+      } else if (success) {
+        await tw(st, 'y', TOP, 1300, 'out');
+        stopWait();
+        await Promise.all([tw(st, 'x', M.chute.x, 1300), tw(st, 'z', M.chute.z, 1300)]);
+        await tw(st, 'open', 1, 260);
+        M.prizeGroup.attach(target);
+        Sound.clunk();
+        await fall(target, M.FLOOR - 0.45, 520);
+        target.visible = false;
+        M.prizeGroup.remove(target);
+        M.prizes.splice(M.prizes.indexOf(target), 1);
+        // 鏡頭拉到取物口，擋板打開，娃娃出現
+        await camTo('door', 700);
+        const won = ClawModel.plush(target.userData.type, target.userData.gold);
+        won.scale.setScalar(0.78); won.rotation.set(-0.1, 0.25, 0); won.position.set(0, 0, 0.02);
+        M.prizeSlot.add(won);
+        await tw(M.flapPivot.rotation, 'x', -1.1, 350, 'out');
+        prize = prizeOf(target);
+        const k = plushKey(target.userData.type, target.userData.gold);
+        if (!student.plush || typeof student.plush !== 'object') student.plush = {};
+        const isNew = !student.plush[k];
+        student.plush[k] = (student.plush[k] || 0) + 1;
+        FX.win(sh.root, 'big', sh.root.querySelector('.fx-behind'));
+        record(student, '夾娃娃機', 1, prize, { tries, plush: (target.userData.gold ? '金' : '') + ClawModel.PLUSH_NAMES[target.userData.type], newPlush: isNew });
+        failRun = 0;
+        sh.sub();
+        await sleep(600);
+        sh.setBusy(false);
+        const name = (target.userData.gold ? '✨金色' : '') + ClawModel.PLUSH_NAMES[target.userData.type];
+        sh.result(`🎉 夾到${name}！`, true, [
+          `得到 ${prize} 點${isNew ? '，收藏冊多了一隻新朋友！' : ''}`,
+          `在這台一共用了 ${ticketWorth(tries)}`
+        ], [
+          ...(student.zoneTickets > 0 ? [{ label: '再夾一次', primary: true, onClick: () => reset(won) }] : []),
+          { label: '📒 看收藏冊', onClick: () => { reset(won); openBook(student, sh.root); } },
+          { label: '不玩了', onClick: () => sh.close() }
+        ]);
+        spawnPrize();
+        return;
+      } else {
+        await tw(st, 'y', TOP, 1100, 'out');
+        Sound.zero();
+      }
+      record(student, '夾娃娃機', 1, 0, { tries });
+      failRun += 1;
+      sh.sub();
+      await sleep(300);
+      sh.setBusy(false);
+      sh.result('沒夾到…', false, [
+        target ? '差一點…娃娃滑下去了' : '爪子下面沒有娃娃（對準時，娃娃頭上會出現綠色圈圈）',
+        `在這台已經用了 ${ticketWorth(tries)}`,
+        '用掉的拿不回來；下一次夾中的機率還是一樣，不會因為前面失敗就比較容易。'
+      ], [
+        ...(student.zoneTickets > 0 ? [{ label: '再夾一次', primary: true, onClick: () => {} }] : []),
+        { label: '不玩了', onClick: () => sh.close() }
+      ]);
+    }
+    async function reset(won) {
+      tw(M.flapPivot.rotation, 'x', 0, 300);
+      if (won) setTimeout(() => M.prizeSlot.remove(won), 300);
+      Promise.all([tw(st, 'x', HOME.x, 900), tw(st, 'z', HOME.z, 900), tw(st, 'open', 0.25, 300)]);
+      await camTo(side ? 'side' : 'player', 650);
+    }
+    // 操作
+    sh.info('用搖桿把爪子移到娃娃上面（前後左右都可以），娃娃頭上出現綠色圈圈就是對準了，再按「夾！」');
+    const acts = sh.actions(`<div class="joy" id="joy"><span class="jl u">後</span><span class="jl d">前</span><span class="jl l">左</span><span class="jl r">右</span><div class="joy-knob" id="joyKnob"></div></div><button class="go" id="cmGo">夾！</button>`);
+    const joy = acts.querySelector('#joy'), knob = acts.querySelector('#joyKnob');
+    let jp = null;
+    const setJoy = (e) => {
+      const r = joy.getBoundingClientRect(), R = r.width / 2 - 18;
+      let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      const d = Math.hypot(dx, dy); if (d > R) { dx = dx / d * R; dy = dy / d * R; }
+      knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      v.x = Math.abs(dx / R) > 0.18 ? dx / R : 0;
+      v.z = Math.abs(dy / R) > 0.18 ? -dy / R : 0;
+    };
+    joy.onpointerdown = (e) => { jp = e.pointerId; joy.setPointerCapture(e.pointerId); setJoy(e); };
+    joy.onpointermove = (e) => { if (jp === e.pointerId) setJoy(e); };
+    joy.onpointerup = joy.onpointercancel = () => { jp = null; v.x = 0; v.z = 0; knob.style.transform = 'translate(-50%, -50%)'; };
+    acts.querySelector('#cmGo').onclick = drop;
+    const viewBtn = wrap.querySelector('#c3View');
+    viewBtn.onclick = () => { if (sh.busy) return; side = !side; viewBtn.textContent = side ? '🎮 回正面' : '👀 看側邊'; camTo(side ? 'side' : 'player'); Sound.tick(); };
+    wrap.querySelector('#c3Book').onclick = () => openBook(student, sh.root);
+    const K = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'];
+    sh.onKey = (e) => {
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (K.includes(k)) { keys[k] = e.type === 'keydown'; e.preventDefault(); return true; }
+      if (k === 'v' && e.type === 'keydown') { viewBtn.click(); return true; }
+      return false;
+    };
+    const ku = (e) => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; if (k in keys) keys[k] = false; };
+    window.addEventListener('keyup', ku);
+    sh.onSpace = drop;
+    sh.cleanup.push(() => {
+      closed = true; cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('keyup', ku);
+      try { M.renderer.dispose(); M.renderer.forceContextLoss(); } catch (e) { /* 已經關了 */ }
+    });
+    requestAnimationFrame(() => { resize(); view = 'player'; cam = V.player(); raf = requestAnimationFrame(loop); });
+  }
+
+  // 沒有 3D（WebGL）時用的平面版
+  function claw2d(student, back) {
     const sh = shell({ student, icon: '🧸', title: '夾娃娃機', bg: '#3a1030', back });
     const bulbs = Array.from({ length: 13 }, (_, i) => `<i style="--d:${(i % 2) * 0.4}s;--c:${['#fff176', '#ff80ab', '#80d8ff'][i % 3]}"></i>`).join('');
     const stars = (n) => Array.from({ length: n }, (_, i) => `<i style="--d:${(i % 3) * 0.3}s;--c:${['#ff5252', '#ffeb3b', '#69f0ae', '#40c4ff'][i % 4]}">★</i>`).join('');
@@ -1066,6 +1338,6 @@ window.Arcade = (() => {
   return {
     open: (game, s, back) => GAMES[game](s, back), onKey, isOpen: () => !!cur,
     close: () => { if (cur) cur.close(true); },
-    savingsHTML, saveTicket, claimSaving, plinkoPrizes, plinkoEV
+    savingsHTML, saveTicket, claimSaving, plinkoPrizes, plinkoEV, openBook
   };
 })();

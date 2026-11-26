@@ -46,6 +46,7 @@ window.Zone = (() => {
           <div class="z-ticket-big"><span class="z-ic">🎟</span><div><div class="z-num">${t}</div><div class="z-lbl">入場券</div></div></div>
           <div class="z-buy">
             <button id="zBuy" class="${canBuy ? 'primary' : 'off'}">用 ${p} 點換 1 張</button>
+            <button id="zBook" class="z-book">📒 收藏冊 <b>${Object.keys(s.plush || {}).length}</b></button>
             <div class="z-hint">${canBuy ? `換了以後剩 ⭐ ${s.score - p} 點` : `點數不夠（要 ${p} 點）`}${rp && !rp.can ? `<br>不換的話：${esc(rp.text)}` : ''}</div>
           </div>
         </div>
@@ -62,6 +63,8 @@ window.Zone = (() => {
     cur.root.querySelector('#zClose').onclick = () => close();
     const buy = cur.root.querySelector('#zBuy');
     if (buy) buy.onclick = buyTicket;
+    const bk = cur.root.querySelector('#zBook');
+    if (bk) bk.onclick = () => Arcade.openBook(cur.student, cur.root);
     cur.root.querySelectorAll('[data-game]').forEach((b) => b.onclick = () => play(b.dataset.game));
     const sv = cur.root.querySelector('#svSave');
     if (sv) sv.onclick = () => { if (Arcade.saveTicket(cur.student)) { render(); W.renderAll(); } };
