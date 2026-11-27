@@ -405,9 +405,8 @@
     const students = cls().students;
     $('mcGrid').innerHTML = students.length
       ? students.map((s) => `<div class="mcard" data-id="${s.id}">
-          <div class="mk-av">${Avatar.html(s, 44)}</div>
-          <div class="mk-name" title="${esc(s.name)}">${esc(s.name)}</div>
-          <div class="mk-score">${s.score}</div>
+          <div class="mk-av">${Avatar.html(s, 40)}</div>
+          <div class="mk-mid"><div class="mk-name" title="${esc(s.name)}">${esc(s.name)}</div><div class="mk-score">${s.score}</div></div>
           <div class="mk-btns"><button class="mk-b mk-minus" data-d="-1" title="減分">−</button><button class="mk-b mk-plus" data-d="1" title="加分">＋</button></div>
         </div>`).join('')
       : '<div class="mk-empty">還沒有學生</div>';
@@ -1100,6 +1099,11 @@
   $('btnZone').onclick = toggleZone;
   $('btnMono').innerHTML = '<span class="em">🏙️</span><span>大富翁</span>';
   $('dMono').innerHTML = '<span class="em">🏙️</span>';
+  $('btnClassDraw').innerHTML = '<span class="em">🎉</span><span>全班加分</span>';
+  $('dClassDraw').innerHTML = '<span class="em">🎉</span>';
+  $('btnClassDraw').onclick = () => Lottery.openClass();
+  $('dClassDraw').onclick = () => Lottery.openClass();
+  $('btnMcClass').onclick = async () => { await setMini(false); Lottery.openClass(); };
   $('btnMono').onclick = () => Monopoly.open();
   $('dMono').onclick = () => Monopoly.open();
   const MP = () => data.settings.monopoly;

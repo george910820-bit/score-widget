@@ -1064,16 +1064,18 @@ body.is-mini.mini-card #display { display: none; }
 .mc-head { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: var(--head); color: #fff; -webkit-app-region: drag; flex: 0 0 auto; }
 .mc-head button { -webkit-app-region: no-drag; }
 .mc-title { flex: 1; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#mcGrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; padding: 8px; align-content: start; }
-.mcard { position: relative; background: #fff; border-radius: 14px; padding: 8px 6px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+#mcGrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; padding: 6px; align-content: start; }
+.mcard { position: relative; background: #fff; border-radius: 12px; padding: 6px 8px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.1); min-height: 52px; }
+.mk-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
 .mcard.bump-up { animation: chipUp .45s ease; }
 .mcard.bump-down { animation: chipDown .45s ease; }
 .mk-av { line-height: 0; }
-.mk-name { font-weight: bold; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .95em; }
-.mk-score { font-size: 1.7em; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
-.mk-btns { display: flex; gap: 6px; width: 100%; }
-.mk-b { flex: 1; border: 0; border-radius: 10px; height: 32px; font-size: 1.3em; font-weight: 900; cursor: pointer; color: #fff; }
+.mk-name { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .95em; line-height: 1.2; }
+.mk-score { font-size: 1.45em; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.mk-btns { display: flex; gap: 5px; flex: 0 0 auto; }
+.mk-b { width: 38px; border: 0; border-radius: 10px; height: 38px; font-size: 1.3em; font-weight: 900; cursor: pointer; color: #fff; }
 .mk-b.mk-plus { background: #2e9d5b; box-shadow: 0 3px 0 #1d6b3c; }
 .mk-b.mk-minus { background: #e0644f; box-shadow: 0 3px 0 #a8402f; }
 .mk-b:active { transform: translateY(2px); box-shadow: none; }
 .mk-empty { grid-column: 1 / -1; text-align: center; opacity: .7; padding: 20px; }
+.mk-class { -webkit-app-region: no-drag; border: 0; border-radius: 8px; padding: 3px 8px; background: #ffd54f; color: #5d3a00; font-weight: bold; cursor: pointer; white-space: nowrap; }

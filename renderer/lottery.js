@@ -91,11 +91,44 @@ window.Lottery = (() => {
   }
 
   function canDraw(student) {
+    if (student.isClass) return W.cls().students.length > 0; // 全班加分：老師按的，不用抽獎券
     return L().ticketMode !== 'ticket' || (student.tickets || 0) > 0;
   }
 
   // 抽一次並馬上記錄（就算動畫還沒播完就關掉，結果也已經存好）
+  // 全班加分：抽一次，全班每個人都加一樣的分數
+  function drawForClass(student, m) {
+    const pool = poolFor(m);
+    const res = pick(student, m);
+    if (!res) return null;
+    const c = W.cls();
+    W.snapshot('全班抽獎加分');
+    const l = L();
+    if (!l.replace) { const rc = remain(m); rc[res.item.id] = Math.max(0, (rc[res.item.id] || 0) - 1); }
+    const base = l.baseOne ? 1 : 0;
+    const bonus = res.item.type === 'prize' ? 0 : (Number(res.item.points) || 0);
+    const total = base + bonus;
+    const hit = isHit(res.item);
+    student.pityMiss = hit ? 0 : (student.pityMiss || 0) + 1;
+    c.classPity = student.pityMiss;
+    const mname = MACHINES.find((x) => x.id === m).name;
+    const t = new Date().toISOString();
+    c.students.forEach((s) => {
+      let next = s.score + total;
+      if (D().settings.noNegative && next < 0) next = 0;
+      const d = next - s.score;
+      s.score = next;
+      D().history.push({ t, type: 'lottery', classId: c.id, studentId: s.id, name: s.name, delta: d, score: next, item: '全班加分：' + label(res.item), hit, pity: res.pity, pool: pool.name, machine: mname, wholeClass: true });
+    });
+    student.score = total;
+    W.save();
+    const roundDone = !l.replace && totalOf(remainAll()[m].counts) === 0;
+    const top = pool.items.slice().sort((a, b) => (b.type === 'prize') - (a.type === 'prize') || b.points - a.points)[0];
+    return { ...res, base, bonus, total, hit, roundDone, top: top && top.id === res.item.id };
+  }
+
   function drawAndApply(student, m) {
+    if (student.isClass) return drawForClass(student, m);
     const pool = poolFor(m);
     const res = pick(student, m);
     if (!res) return null;
@@ -855,6 +888,13 @@ window.Lottery = (() => {
   // ---------- 抽獎畫面 ----------
   let cur = null; // { student, machine, busy, root }
 
+  // 全班加分用的「全班」
+  function classPseudo() {
+    const c = W.cls();
+    return { id: '__class', name: '全班', isClass: true, score: 0, tickets: 0, pityMiss: c.classPity || 0, avatar: { type: 'emoji', emoji: '🏫', bg: '#ffe3a3' } };
+  }
+  function openClass() { if (!W.cls().students.length) { W.toast('還沒有學生', false); return; } open(classPseudo()); }
+
   function open(student) {
     close();
     const root = document.createElement('div');
@@ -978,7 +1018,7 @@ window.Lottery = (() => {
       info += need <= 0 ? '・<b>這次保底必中！</b>' : `・保底：再 ${need} 次沒中就必中`;
     }
     cur.root.querySelector('#lottoInfo').innerHTML = info;
-    cur.root.querySelector('#lottoSub').textContent = l.ticketMode === 'ticket' ? `🎟 抽獎券 ${s.tickets || 0} 張・⭐ ${s.score}` : `⭐ ${s.score}`;
+    cur.root.querySelector('#lottoSub').textContent = s.isClass ? `全班 ${W.cls().students.length} 人一起抽，抽到幾分每個人都加` : (l.ticketMode === 'ticket' ? `🎟 抽獎券 ${s.tickets || 0} 張・⭐ ${s.score}` : `⭐ ${s.score}`);
     const goBtn = cur.root.querySelector('#lottoGo');
     const ok = canDraw(s) && total > 0;
     goBtn.classList.toggle('off', !ok);
@@ -1019,7 +1059,8 @@ window.Lottery = (() => {
     else big = '這次沒有加碼';
     if (res.base) lines.push(`好行為基本分 +${res.base}`);
     if (res.bonus) lines.push(`抽獎加碼 +${res.bonus}`);
-    lines.push(`共 ${res.total >= 0 ? '+' : ''}${res.total} 分・現在 ⭐ ${cur.student.score}`);
+    if (cur.student.isClass) lines.push(`全班 ${W.cls().students.length} 個人，每個人都 ${res.total >= 0 ? '+' : ''}${res.total} 分！`);
+    else lines.push(`共 ${res.total >= 0 ? '+' : ''}${res.total} 分・現在 ⭐ ${cur.student.score}`);
     if (res.pity) lines.push('（保底觸發）');
     if (res.roundDone) lines.push('這一輪抽完了，下次會重新裝滿');
     const again = canDraw(cur.student);
@@ -1074,7 +1115,7 @@ window.Lottery = (() => {
     return true;
   }
 
-  return {
+  return { openClass,
     open, close, onKey, confetti, label, isHit, poolFor, refill, weights, renderEditor, inkFor,
     isOpen: () => !!cur, MACHINES, BALL_COLORS
   };
