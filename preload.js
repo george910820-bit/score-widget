@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('api', {
   onMaximized: (cb) => ipcRenderer.on('win:maximized', (_e, v) => cb(v)),
   setPin: (on) => ipcRenderer.invoke('win:pin', on),
   setOpacity: (v) => ipcRenderer.invoke('win:opacity', v),
-  setMini: (on, h) => ipcRenderer.invoke('win:mini', on, h),
+  setMini: (on, h, style) => ipcRenderer.invoke('win:mini', on, h, style),
   fit: (h) => ipcRenderer.invoke('win:fit', h),
   openDataDir: () => ipcRenderer.invoke('app:openDataDir'),
   exportCsv: (name, text) => ipcRenderer.invoke('export:csv', name, text),

@@ -8,6 +8,8 @@
     pin: svg('<path d="M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4"/><path d="M9 15l-4.5 4.5"/><path d="M14.5 4l5.5 5.5"/>'),
     undo: svg('<path d="M9 14l-4 -4l4 -4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/>'),
     mini: svg('<path d="M4 15h16"/><path d="M4 19h16"/><rect x="4" y="4" width="16" height="7" rx="2"/>'),
+    cards: svg('<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>'),
+    bar: svg('<rect x="3" y="9" width="18" height="6" rx="3"/>'),
     expand: svg('<path d="M16 4h4v4"/><path d="M14 10l6 -6"/><path d="M8 20h-4v-4"/><path d="M4 20l6 -6"/>'),
     shrink: svg('<path d="M5 9h4v-4"/><path d="M3 3l6 6"/><path d="M19 15h-4v4"/><path d="M21 21l-6 -6"/>'),
     gear: svg('<path d="M10.3 4.3c.4 -1.8 3 -1.8 3.4 0a1.7 1.7 0 0 0 2.6 1.1c1.5 -.9 3.3 .8 2.4 2.4a1.7 1.7 0 0 0 1 2.5c1.8 .4 1.8 3 0 3.4a1.7 1.7 0 0 0 -1 2.6c.9 1.5 -.9 3.3 -2.4 2.4a1.7 1.7 0 0 0 -2.6 1c-.4 1.8 -3 1.8 -3.4 0a1.7 1.7 0 0 0 -2.6 -1c-1.5 .9 -3.3 -.9 -2.4 -2.4a1.7 1.7 0 0 0 -1 -2.6c-1.8 -.4 -1.8 -3 0 -3.4a1.7 1.7 0 0 0 1 -2.5c-.9 -1.6 .9 -3.3 2.4 -2.4a1.7 1.7 0 0 0 2.6 -1.1"/><circle cx="12" cy="12" r="3"/>'),
@@ -20,7 +22,7 @@
   };
   const $ = (id) => document.getElementById(id);
   const setIcon = (id, name) => { $(id).innerHTML = ICON[name]; };
-  [['btnPin', 'pin'], ['btnMiniPin', 'pin'], ['btnUndo', 'undo'], ['btnMini', 'mini'], ['btnExpand', 'expand'],
+  [['btnPin', 'pin'], ['btnMiniPin', 'pin'], ['btnMcPin', 'pin'], ['btnMcExpand', 'expand'], ['btnMiniStyle', 'cards'], ['btnMcStyle', 'bar'], ['btnUndo', 'undo'], ['btnMini', 'mini'], ['btnExpand', 'expand'],
     ['btnSettings', 'gear'], ['btnMinimize', 'minimize'], ['btnClose', 'close'], ['btnBack', 'back'],
     ['dUndo', 'undo'], ['dSettings', 'gear'], ['dExit', 'shrink'], ['dClose', 'close']].forEach(([id, n]) => setIcon(id, n));
 
@@ -166,7 +168,7 @@
   let data = defaultData();
   let dataUrl = '';
   let pinned = true;
-  let mini = false;
+  let mini = false, miniStyle = 'bar';
   let display = false;
   const undoStack = [];
 
@@ -392,13 +394,31 @@
       ? students.map((s) => `<button class="chip" data-id="${s.id}" title="左鍵 +・右鍵 −">${esc(s.name)}<b>${s.score}</b></button>`).join('')
       : `<span style="padding:4px 6px;opacity:.8">還沒有學生</span>`;
     if (mini) requestAnimationFrame(fitMini);
+    renderMiniCards();
+  }
+
+  // 卡片迷你模式：頭貼、姓名、分數、− ＋
+  function renderMiniCards() {
+    if (!(mini && miniStyle === 'card')) return;
+    $('mcTitle').textContent = cls().name || '';
+    // 固定照名單順序，加減分後卡片不會換位置（避免按錯人）
+    const students = cls().students;
+    $('mcGrid').innerHTML = students.length
+      ? students.map((s) => `<div class="mcard" data-id="${s.id}">
+          <div class="mk-av">${Avatar.html(s, 44)}</div>
+          <div class="mk-name" title="${esc(s.name)}">${esc(s.name)}</div>
+          <div class="mk-score">${s.score}</div>
+          <div class="mk-btns"><button class="mk-b mk-minus" data-d="-1" title="減分">−</button><button class="mk-b mk-plus" data-d="1" title="加分">＋</button></div>
+        </div>`).join('')
+      : '<div class="mk-empty">還沒有學生</div>';
   }
 
   function renderPin() {
     $('btnPin').classList.toggle('off', !pinned);
     $('btnMiniPin').classList.toggle('off', !pinned);
+    $('btnMcPin').classList.toggle('off', !pinned);
     const t = pinned ? '已置頂（點一下取消）' : '沒有置頂（點一下置頂）';
-    $('btnPin').title = t; $('btnMiniPin').title = t;
+    $('btnPin').title = t; $('btnMiniPin').title = t; $('btnMcPin').title = t;
   }
 
   function renderSoundBtn() {
@@ -446,15 +466,17 @@
     const z = (Number(data.settings.zoom) || 100) / 100;
     return Math.ceil($('mini').getBoundingClientRect().height * z);
   }
-  function fitMini() { if (mini) window.api.fit(miniHeight()); }
+  function fitMini() { if (mini && miniStyle === 'bar') window.api.fit(miniHeight()); }
 
-  async function setMini(on) {
+  async function setMini(on, style) {
     mini = on;
+    if (style) miniStyle = style;
     document.body.classList.toggle('is-mini', on);
+    document.body.classList.toggle('mini-card', on && miniStyle === 'card');
     if (on) {
       renderMini();
       await new Promise((r) => requestAnimationFrame(r));
-      await window.api.setMini(true, miniHeight());
+      await window.api.setMini(true, miniHeight(), miniStyle);
     } else {
       await window.api.setMini(false);
     }
@@ -1119,6 +1141,14 @@
   $('toastUndo').onclick = undo;
   $('btnMini').onclick = () => setMini(true);
   $('btnExpand').onclick = () => setMini(false);
+  $('btnMcExpand').onclick = () => setMini(false);
+  $('btnMcPin').onclick = togglePin;
+  $('btnMiniStyle').onclick = () => setMini(true, 'card');
+  $('btnMcStyle').onclick = () => setMini(true, 'bar');
+  $('mcGrid').addEventListener('click', (e) => {
+    const b = e.target.closest('.mk-b'); if (!b) return;
+    changeScore(b.closest('.mcard').dataset.id, Number(b.dataset.d));
+  });
   $('btnSettings').onclick = () => openSettings();
   $('dSettings').onclick = () => openSettings();
   $('btnBack').onclick = closeSettings;
@@ -1166,7 +1196,8 @@
     window.api.setOpacity((Number(data.settings.opacity) || 100) / 100);
     window.api.setZoom((Number(data.settings.zoom) || 100) / 100);
     renderAll();
-    if (res && res.mini) setMini(true);
+    if (res && res.mini) setMini(true, res.miniStyle === 'card' ? 'card' : 'bar');
+    else if (res && res.miniStyle) miniStyle = res.miniStyle;
     save();
   })();
 })();

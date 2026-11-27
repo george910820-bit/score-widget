@@ -54,8 +54,21 @@
   <section id="mini">
     <div class="mini-handle" title="拖曳移動">⋮⋮</div>
     <div id="miniChips"></div>
+    <button class="icon-btn" id="btnMiniStyle" title="換成卡片模式（有頭貼和加減分按鈕）"></button>
     <button class="icon-btn" id="btnMiniPin" title="置頂（點一下切換）"></button>
     <button class="icon-btn" id="btnExpand" title="展開"></button>
+  </section>
+
+  <!-- 迷你模式（卡片）：頭貼、姓名、分數、加減分 -->
+  <section id="miniCard">
+    <header class="mc-head">
+      <span class="mini-handle" title="拖曳移動">⋮⋮</span>
+      <span class="mc-title" id="mcTitle"></span>
+      <button class="icon-btn" id="btnMcStyle" title="換成橫條模式"></button>
+      <button class="icon-btn" id="btnMcPin" title="置頂（點一下切換）"></button>
+      <button class="icon-btn" id="btnMcExpand" title="展開"></button>
+    </header>
+    <div id="mcGrid"></div>
   </section>
 
   <!-- 設定 -->
@@ -336,7 +349,7 @@
         </div>
       </div>
 
-      <p class="version">學生加分小工具 v7.4.1</p>
+      <p class="version">學生加分小工具 v7.5.0</p>
     </div>
   </section>
 

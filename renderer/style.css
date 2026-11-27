@@ -121,6 +121,7 @@ button, select, input, textarea { font: inherit; color: inherit; }
 }
 body.is-mini #full { display: none; }
 body.is-mini #mini { display: flex; }
+body.is-mini.mini-card #mini { display: none; }
 .mini-handle { padding: 6px 2px; opacity: .7; cursor: move; line-height: 1; }
 #miniChips { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; }
 #mini button { -webkit-app-region: no-drag; }
@@ -1055,3 +1056,24 @@ body.is-display .c3-b { font-size: 1.3em; padding: 10px 18px; }
 .c3-hint.on { opacity: 1; }
 @keyframes c3Bob { 50% { transform: translate(-50%, calc(-100% - 6px)); } }
 body.is-display .c3-hint { font-size: 1.3em; }
+
+/* ---------- 迷你模式（卡片） ---------- */
+#miniCard { display: none; flex-direction: column; height: 100vh; background: var(--bg, #fffaf0); }
+body.is-mini.mini-card #miniCard { display: flex; }
+body.is-mini.mini-card #display { display: none; }
+.mc-head { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: var(--head); color: #fff; -webkit-app-region: drag; flex: 0 0 auto; }
+.mc-head button { -webkit-app-region: no-drag; }
+.mc-title { flex: 1; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mcGrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; padding: 8px; align-content: start; }
+.mcard { position: relative; background: #fff; border-radius: 14px; padding: 8px 6px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+.mcard.bump-up { animation: chipUp .45s ease; }
+.mcard.bump-down { animation: chipDown .45s ease; }
+.mk-av { line-height: 0; }
+.mk-name { font-weight: bold; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .95em; }
+.mk-score { font-size: 1.7em; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.mk-btns { display: flex; gap: 6px; width: 100%; }
+.mk-b { flex: 1; border: 0; border-radius: 10px; height: 32px; font-size: 1.3em; font-weight: 900; cursor: pointer; color: #fff; }
+.mk-b.mk-plus { background: #2e9d5b; box-shadow: 0 3px 0 #1d6b3c; }
+.mk-b.mk-minus { background: #e0644f; box-shadow: 0 3px 0 #a8402f; }
+.mk-b:active { transform: translateY(2px); box-shadow: none; }
+.mk-empty { grid-column: 1 / -1; text-align: center; opacity: .7; padding: 20px; }

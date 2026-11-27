@@ -75,7 +75,7 @@ function loadData() {
 
 // ---------- 視窗 ----------
 let win = null;
-let winState = { width: 340, height: 520, x: undefined, y: undefined, pinned: true, mini: false };
+let winState = { width: 340, height: 520, x: undefined, y: undefined, pinned: true, mini: false, miniStyle: 'bar', cardW: 380, cardH: 440 };
 
 function boundsVisible(b) {
   if (b.x === undefined || b.y === undefined) return false;
@@ -95,10 +95,10 @@ function createWindow() {
   const saved = readJSON(WIN_FILE);
   if (saved) winState = { ...winState, ...saved };
   const opts = {
-    width: winState.width,
-    height: winState.mini ? 64 : winState.height,
-    minWidth: 220,
-    minHeight: winState.mini ? 40 : 160,
+    width: winState.mini && winState.miniStyle === 'card' ? winState.cardW : winState.width,
+    height: winState.mini ? (winState.miniStyle === 'card' ? winState.cardH : 64) : winState.height,
+    minWidth: winState.mini && winState.miniStyle === 'card' ? 180 : 220,
+    minHeight: winState.mini ? (winState.miniStyle === 'card' ? 150 : 40) : 160,
     frame: false,
     resizable: true,
     alwaysOnTop: winState.pinned,
@@ -122,8 +122,10 @@ function createWindow() {
   const track = () => {
     if (!win || win.isMinimized() || win.isMaximized()) return;
     const b = win.getBounds();
-    winState.x = b.x; winState.y = b.y; winState.width = b.width;
-    if (!winState.mini) winState.height = b.height;
+    winState.x = b.x; winState.y = b.y;
+    // 卡片迷你模式有自己的大小，不影響一般視窗
+    if (winState.mini && winState.miniStyle === 'card') { winState.cardW = b.width; winState.cardH = b.height; }
+    else { winState.width = b.width; if (!winState.mini) winState.height = b.height; }
     saveWinState();
   };
   win.on('moved', track);
@@ -165,7 +167,8 @@ ipcMain.handle('data:load', () => ({
   dataDir: DATA_DIR,
   dataUrl: pathToFileURL(DATA_DIR).href.replace(/\/?$/, '/'),
   pinned: winState.pinned,
-  mini: winState.mini
+  mini: winState.mini,
+  miniStyle: winState.miniStyle
 }));
 
 // 頭貼、音效檔只能存在資料夾裡的 avatars／sounds，避免寫到別的地方
@@ -225,23 +228,29 @@ ipcMain.handle('win:opacity', (_e, v) => {
 });
 
 // 切換迷你模式：迷你時視窗高度跟著內容走
-ipcMain.handle('win:mini', (_e, on, contentHeight) => {
+// style：'bar'（橫條，高度跟著內容）或 'card'（長方形卡片，可以自由調整大小）
+ipcMain.handle('win:mini', (_e, on, contentHeight, style) => {
   if (!win) return false;
+  if (win.isMaximized()) win.unmaximize();
   winState.mini = !!on;
+  if (style === 'bar' || style === 'card') winState.miniStyle = style;
   const b = win.getBounds();
-  if (on) {
+  if (on && winState.miniStyle === 'card') {
+    win.setMinimumSize(180, 150);
+    win.setBounds({ x: b.x, y: b.y, width: Math.max(180, winState.cardW || 380), height: Math.max(150, winState.cardH || 440) });
+  } else if (on) {
     win.setMinimumSize(220, 40);
-    win.setBounds({ x: b.x, y: b.y, width: b.width, height: Math.max(40, Math.round(contentHeight || 64)) });
+    win.setBounds({ x: b.x, y: b.y, width: Math.max(220, winState.width || 340), height: Math.max(40, Math.round(contentHeight || 64)) });
   } else {
     win.setMinimumSize(220, 160);
-    win.setBounds({ x: b.x, y: b.y, width: b.width, height: Math.max(160, winState.height || 520) });
+    win.setBounds({ x: b.x, y: b.y, width: Math.max(220, winState.width || 340), height: Math.max(160, winState.height || 520) });
   }
   saveWinState();
   return winState.mini;
 });
 
 ipcMain.handle('win:fit', (_e, contentHeight) => {
-  if (!win || !winState.mini) return;
+  if (!win || !winState.mini || winState.miniStyle === 'card') return;
   const b = win.getBounds();
   const h = Math.max(40, Math.round(contentHeight));
   if (Math.abs(b.height - h) > 1) win.setBounds({ x: b.x, y: b.y, width: b.width, height: h });
