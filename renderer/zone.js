@@ -13,7 +13,8 @@ window.Zone = (() => {
     { id: 'hilo', ic: '🃏', name: '猜大小', kind: 'luck', desc: '猜對獎金翻倍，見好就收' },
     { id: 'race', ic: '🏁', name: '小動物賽跑', kind: 'luck', desc: '全班一起押，冷門獎比較大' },
     { id: 'mole', ic: '🔨', name: '打地鼠', kind: 'skill', desc: '20 秒，越來越快，最後 10 秒超快！' },
-    { id: 'memory', ic: '🧠', name: '翻牌記憶配對', kind: 'skill', desc: '翻錯越少，分數越多' }
+    { id: 'memory', ic: '🧠', name: '翻牌記憶配對', kind: 'skill', desc: '翻錯越少，分數越多' },
+    { id: 'kart', ic: '🏎️', name: '虎尾大賽車', kind: 'skill', desc: '2～4 人大屏對戰！每人 2 張，前三名分獎池' }
   ];
 
   function open(student, returning) {
@@ -107,7 +108,7 @@ window.Zone = (() => {
 
   function play(game) {
     const s = cur.student;
-    if ((s.zoneTickets || 0) < 1) { W.toast('先用點數換入場券', false); Sound.minus(); return; }
+    if (game !== 'kart' && (s.zoneTickets || 0) < 1) { W.toast('先用點數換入場券', false); Sound.minus(); return; }
     Research.pick(s, (GAME_LIST.find((g) => g.id === game) || {}).name || game);
     close(true);
     const back = (st) => { if (Z().on) open(st, true); else Research.leave(st); };

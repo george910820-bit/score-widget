@@ -325,6 +325,38 @@ window.Sound = (() => {
         setTimeout(() => srcs.forEach((n) => { try { n.stop(); } catch (e) { /* 已經停了 */ } }), 400);
       };
     },
+    // ---------- 賽車背景音樂：一直循環，最後一圈變快 ----------
+    loopMusic() {
+      if (!on()) return { stop() {}, fast() {} };
+      const a = ctx;
+      const bus = a.createGain(); bus.gain.value = 0.75; bus.connect(master);
+      const CH = [
+        { b: 110, n: [440, 523.25, 659.25] }, { b: 87.31, n: [349.23, 440, 523.25] },
+        { b: 130.81, n: [392, 523.25, 659.25] }, { b: 98, n: [392, 493.88, 587.33] }
+      ];
+      const LEAD = [659.25, 0, 783.99, 659.25, 587.33, 0, 523.25, 587.33, 659.25, 0, 880, 783.99, 659.25, 587.33, 523.25, 0];
+      let bpm = 160, next = a.currentTime + 0.08, beat = 0;
+      const sched = () => {
+        while (next < a.currentTime + 0.35) {
+          const t = next - a.currentTime, q = 60 / bpm, s16 = q / 4, ch = CH[Math.floor(beat / 4) % 4];
+          noiseHit(t, 0.05, 700, null, 'bandpass', 0.08, 1.2, 0.03, bus);
+          noiseHit(t + s16, 0.05, 900, null, 'bandpass', 0.07, 1.2, 0.03, bus);
+          tone(95, t + s16 * 2, 0.14, 'sine', 0.3, 50, 0, bus);
+          for (let k = 0; k < 4; k++) noiseHit(t + s16 * k, 0.03, 8000, null, 'highpass', k === 2 ? 0.045 : 0.02, 0.7, 0, bus);
+          [0, 2].forEach((k, i) => tone(i ? ch.b * 1.5 : ch.b, t + s16 * k, s16 * 1.8, 'sawtooth', 0.08, null, 0.05, bus));
+          for (let k = 0; k < 4; k++) tone(ch.n[[0, 1, 2, 1][k]] * (bpm > 175 ? 2 : 1), t + s16 * k, s16 * 0.9, 'square', 0.025, null, 0.12, bus);
+          if ((Math.floor(beat / 16) % 2) === 1) { const f = LEAD[(beat * 2) % 16], f2 = LEAD[(beat * 2 + 1) % 16]; if (f) tone(f, t, q * 0.45, 'triangle', 0.07, null, 0.2, bus); if (f2) tone(f2, t + q / 2, q * 0.45, 'triangle', 0.07, null, 0.2, bus); }
+          if (beat % 4 === 0) ch.n.forEach((f) => tone(f / 2, t, q * 1.6, 'sawtooth', 0.035, null, 0.3, bus));
+          next += q; beat++;
+        }
+      };
+      sched();
+      const timer = setInterval(sched, 90);
+      return {
+        stop() { clearInterval(timer); try { bus.gain.setTargetAtTime(0.0001, a.currentTime, 0.1); setTimeout(() => bus.disconnect(), 800); } catch (e) { /* ignore */ } },
+        fast() { bpm = 190; }
+      };
+    },
     // ---------- 換到入場券：收銀機＋上升號角＋閃亮亮 ----------
     bigTicket() {
       if (!on()) return;

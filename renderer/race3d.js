@@ -192,7 +192,7 @@ window.RaceModel = (() => {
     // 燈光
     scene.add(new THREE.HemisphereLight(0xffffff, 0x5a8f4a, 0.7));
     const sun = new THREE.DirectionalLight(0xfff4e0, 2.0); sun.position.set(-8, 14, -6); sun.castShadow = true;
-    sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12, near: 1, far: 50 }); sun.shadow.bias = -0.0004; scene.add(sun);
+    sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12, near: 1, far: 50 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03; scene.add(sun);
     return { curve, pts, N, TW, tang, boosts, startAngle: ang0 };
   }
 

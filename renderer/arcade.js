@@ -81,7 +81,7 @@ window.Arcade = (() => {
     W.save();
     W.renderAll();
   }
-  const NOTE = { slot: '落在第幾格(0起)', tries: '這次連玩第幾次', rounds: '猜對幾關', lost: '輸掉的獎金', closed: '中途關掉', racer: '押', winner: '贏的是', bet: '押法', place: '押的那隻跑第幾名', hits: '打中', plush: '夾到', newPlush: '收藏冊新的一隻', mistakes: '翻錯', pairs: '幾對', flips: '按擋板次數' };
+  const NOTE = { slot: '落在第幾格(0起)', tries: '這次連玩第幾次', rounds: '猜對幾關', lost: '輸掉的獎金', closed: '中途關掉', racer: '押', winner: '贏的是', bet: '押法', place: '押的那隻跑第幾名', hits: '打中', plush: '夾到', newPlush: '收藏冊新的一隻', mistakes: '翻錯', pairs: '幾對', flips: '按擋板次數', rank: '名次', players: '幾人一起' };
   const ticketWorth = (n) => `${n} 張入場券（值 ${n * price()} 點）`;
 
   // =====================================================================
@@ -1375,6 +1375,8 @@ window.Arcade = (() => {
   return {
     open: (game, s, back) => GAMES[game](s, back), onKey, isOpen: () => !!cur,
     close: () => { if (cur) cur.close(true); },
+    register: (id, fn) => { GAMES[id] = fn; },
+    kit: { shell, record, price, esc, sleep, ticketWorth, A, webglOK: () => webglOK(), isCur: (sh) => cur === sh },
     savingsHTML, saveTicket, claimSaving, plinkoPrizes, plinkoEV, openBook
   };
 })();

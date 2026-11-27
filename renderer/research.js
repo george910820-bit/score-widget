@@ -3,7 +3,7 @@
 window.Research = (() => {
   'use strict';
   const LUCK = { 吃角子老虎機: 1, 刮刮樂: 1, 彈珠台: 1, 夾娃娃機: 1, 猜大小: 1, 小動物賽跑: 1 };
-  const SKILL = { 打地鼠: 1, 翻牌記憶配對: 1 };
+  const SKILL = { 打地鼠: 1, 翻牌記憶配對: 1, 虎尾大賽車: 1 };
   const price = () => Number(W.data.settings.zone.price) || 10;
   const r1 = (x) => Math.round(x * 10) / 10;
 
